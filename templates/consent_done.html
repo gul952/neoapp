@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="text-align:center">
+  <h1>Consent recorded</h1>
+  <p class="sub">This patient's study ID is:</p>
+  <div style="font-size:28px;font-weight:700;letter-spacing:1px;color:var(--green);background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:16px;margin:16px 0">
+    {{ record.study_id }}
+  </div>
+  <p style="font-size:12px;color:var(--text2);margin-bottom:20px">
+    Signed by {{ record.guardian_name }} ({{ record.relationship_to_infant }}) &middot;
+    witnessed by {{ record.witnessed_by.full_name }}
+  </p>
+  <a class="btn" href="{{ url_for('assessment.history', study_id=record.study_id) }}">Continue to data collection &rarr;</a>
+  &nbsp;
+  <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">Return to dashboard</a>
+</div>
+{% endblock %}

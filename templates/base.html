@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>{% block title %}NeoSepsis Data Collection{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<div class="topbar">
+  <div class="brand"><a href="{{ url_for('dashboard') }}" style="color:inherit;text-decoration:none">NeoSepsis Data Collection</a></div>
+  <div class="who">
+    <a href="{{ url_for('dashboard') }}">Home</a>
+    <span>{{ current_user.full_name }} &nbsp;
+      <span class="badge {{ 'admin' if current_user.is_admin() else 'doctor' }}">{{ current_user.role }}</span>
+    </span>
+    <a href="{{ url_for('auth.change_password') }}">Change password</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="wrap {% block wrapclass %}{% endblock %}">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}
+        <div class="flash">{{ m }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

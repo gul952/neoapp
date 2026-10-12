@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Add account</h1>
+  <p class="sub">Give the login details to the doctor directly &mdash; there's no self-signup.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Full name</label>
+    <input type="text" name="full_name" required>
+    <label>Username</label>
+    <input type="text" name="username" required>
+    <label>Temporary password</label>
+    <input type="password" name="password" required>
+    <label>Role</label>
+    <select name="role">
+      <option value="doctor">Doctor</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button type="submit">Create account</button>
+    &nbsp; <a class="btn btn-secondary" href="{{ url_for('admin.list_users') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>Accounts</h1>
+<p class="sub"><a class="btn" href="{{ url_for('admin.new_user') }}">+ Add account</a></p>
+
+<div class="card">
+  <table>
+    <tr><th>Name</th><th>Username</th><th>Role</th><th>Created</th></tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.full_name }}</td>
+      <td>{{ u.username }}</td>
+      <td><span class="badge {{ 'admin' if u.is_admin() else 'doctor' }}">{{ u.role }}</span></td>
+      <td>{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

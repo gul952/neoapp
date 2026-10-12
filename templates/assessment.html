@@ -1,0 +1,2027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>NeoSepsis CDS — Patient Assessment Tool</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root{
+  --bg:#07090f;--surface:#0d1117;--surface2:#161b22;--surface3:#1f2937;
+  --border:#21262d;--border2:#30363d;
+  --text:#e6edf3;--text2:#8b949e;--text3:#484f58;
+  --red:#f85149;--red-bg:#3d1313;--red-dim:#7f1d1d;
+  --amber:#e3b341;--amber-bg:#2d1f00;
+  --green:#3fb950;--green-bg:#0d2e1a;
+  --blue:#58a6ff;--blue-bg:#0d2137;
+  --purple:#bc8cff;--purple-bg:#1a0d2e;
+  --teal:#39d353;
+  --accent:#58a6ff;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6}
+body{display:flex;flex-direction:column;overflow:hidden}
+
+/* Layout */
+#app{display:flex;flex:1;min-height:0;overflow:hidden}
+#sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+#content{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* Sidebar */
+.sb-logo{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.sb-logo h1{font-size:13px;font-weight:600;color:var(--text);letter-spacing:.3px}
+.sb-logo p{font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)}
+.sb-steps{padding:12px 0;flex:1}
+.step-item{display:flex;align-items:flex-start;gap:10px;padding:8px 16px;cursor:pointer;transition:background .15s;border-left:2px solid transparent}
+.step-item:hover{background:var(--surface2)}
+.step-item.active{background:var(--surface2);border-left-color:var(--accent)}
+.step-item.done .step-num{background:var(--green);color:#000;border-color:var(--green)}
+.step-item.active .step-num{border-color:var(--accent);color:var(--accent)}
+.step-num{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;margin-top:1px;font-family:var(--mono);color:var(--text3);transition:all .2s}
+.step-label{font-size:11px;font-weight:500;color:var(--text2);line-height:1.4;transition:color .2s}
+.step-item.active .step-label{color:var(--text)}
+.step-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.sb-hint{padding:12px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);line-height:1.5}
+
+/* Main content */
+.step-page{display:none;flex:1;padding:32px 40px;max-width:800px}
+.step-page.active{display:block}
+.page-header{margin-bottom:28px}
+.page-header h2{font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.3px}
+.page-header p{font-size:12px;color:var(--text2);margin-top:4px}
+.fc-badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;margin-bottom:8px;letter-spacing:.5px}
+
+/* Sections */
+.section{margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.section-header{padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;display:flex;align-items:center;gap:8px}
+.section-body{padding:14px}
+
+/* Form elements */
+.row{display:grid;gap:12px;margin-bottom:12px}
+.row.col2{grid-template-columns:1fr 1fr}
+.row.col3{grid-template-columns:1fr 1fr 1fr}
+.row.col1{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:500;color:var(--text2);line-height:1.4}
+.field label span{color:var(--text3);font-weight:400}
+.field input[type=number],.field input[type=text],.field select{
+  background:var(--surface2);border:1px solid var(--border2);border-radius:5px;
+  padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:12px;
+  width:100%;transition:border-color .15s;outline:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field input::placeholder{color:var(--text3)}
+.field select option{background:var(--surface2)}
+
+/* Toggle group */
+.toggle-group{display:flex;gap:4px}
+.toggle-btn{flex:1;padding:6px 4px;border:1px solid var(--border2);border-radius:5px;background:var(--surface2);
+  color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;font-family:var(--sans)}
+.toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+.toggle-btn.sel-yes{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.toggle-btn.sel-no{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.toggle-btn.sel-inactive{opacity:.45}
+.toggle-btn.sel-active{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+
+/* Sub-field (conditional) */
+.subfield{margin-top:8px;padding:10px;background:var(--surface3);border-radius:5px;border-left:2px solid var(--accent)}
+.subfield .row{margin-bottom:8px}
+.subfield .row:last-child{margin-bottom:0}
+
+/* Navigation */
+.nav-bar{padding:16px 40px;border-top:1px solid var(--border);background:var(--surface);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.btn{padding:8px 18px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-primary{background:var(--accent);color:#000;font-weight:600}
+.btn-primary:hover{background:#79bfff}
+.btn-calc{background:var(--green);color:#000;font-weight:700;font-size:13px;padding:9px 24px}
+.btn-calc:hover{background:#57e576}
+.btn-reset{background:var(--red-dim);color:var(--red);border:1px solid var(--red-dim)}
+.btn-reset:hover{background:var(--red-bg)}
+
+/* Results page */
+#results-page{display:none;padding:32px 40px;max-width:900px}
+#results-page.active{display:block}
+
+.result-class{border-radius:10px;padding:24px 28px;margin-bottom:24px;border:1px solid}
+.result-class.proven{background:var(--red-bg);border-color:var(--red)}
+.result-class.probable{background:var(--amber-bg);border-color:var(--amber)}
+.result-class.possible{background:var(--blue-bg);border-color:var(--blue)}
+.result-class.none{background:var(--green-bg);border-color:var(--green)}
+
+.class-label{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;opacity:.7;font-family:var(--mono)}
+.class-name{font-size:32px;font-weight:600;letter-spacing:-.5px;margin:4px 0}
+.class-timing{font-size:12px;opacity:.7;font-family:var(--mono)}
+
+.proven .class-name{color:var(--red)}
+.probable .class-name{color:var(--amber)}
+.possible .class-name{color:var(--blue)}
+.none .class-name{color:var(--green)}
+
+/* Score chips */
+.score-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:5px;font-size:11px;font-family:var(--mono)}
+.chip-red{background:var(--red-bg);border:1px solid var(--red-dim);color:var(--red)}
+.chip-amber{background:var(--amber-bg);border:1px solid #6b4f00;color:var(--amber)}
+.chip-green{background:var(--green-bg);border:1px solid #1a5c2a;color:var(--green)}
+.chip-blue{background:var(--blue-bg);border:1px solid #1a4060;color:var(--blue)}
+.chip-grey{background:var(--surface2);border:1px solid var(--border2);color:var(--text2)}
+
+/* Result cards */
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.res-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+.res-card h3{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;font-family:var(--mono)}
+.res-card .drug{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px}
+.res-card .drug-detail{font-size:11px;color:var(--text2);font-family:var(--mono)}
+.res-card .dur{font-size:28px;font-weight:600;color:var(--amber)}
+.res-card .dur-unit{font-size:12px;color:var(--text2)}
+.flags-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.flag-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px}
+.flag-name{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.flag-val{font-size:13px;font-weight:600;font-family:var(--mono)}
+.flag-val.true{color:var(--red)}
+.flag-val.false{color:var(--green)}
+.flag-val.score{color:var(--amber)}
+
+.review-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.review-list li{display:flex;align-items:baseline;gap:10px;font-size:12px}
+.review-time{font-family:var(--mono);font-size:11px;color:var(--accent);min-width:60px}
+.warn-box{background:var(--amber-bg);border:1px solid #6b4f00;border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--amber)}
+.warn-box strong{font-weight:600}
+.override-alert{background:var(--red-bg);border:1px solid var(--red-dim);border-radius:6px;padding:10px 14px;margin-bottom:8px;font-size:11px;color:var(--red);display:flex;gap:8px;align-items:flex-start}
+
+/* Misc */
+.hint-text{font-size:11px;color:var(--text3);margin-top:4px;font-style:italic}
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.unit{color:var(--text3);font-size:10px;margin-left:3px;font-family:var(--mono)}
+
+input[type=number]::-webkit-inner-spin-button{opacity:.4}
+</style>
+</head>
+<body>
+<div id="encounter-banner" style="flex-shrink:0;background:#0d1117;border-bottom:1px solid #21262d;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8b949e">
+  <div style="padding:8px 20px;display:flex;justify-content:space-between;align-items:center">
+    <span>Study ID: <strong style="color:#58a6ff">{{ study_id }}</strong> &nbsp;|&nbsp; Entered by: {{ current_user.full_name }}</span>
+    <a href="{{ url_for('dashboard') }}" style="color:#8b949e;text-decoration:none">&larr; Exit to dashboard</a>
+  </div>
+  {% if prefill_date %}
+  <div style="padding:6px 20px;border-top:1px solid #21262d;color:#58a6ff;background:#0d2137">
+    &#8505; Pre-filled from the assessment recorded {{ prefill_date }}. Review and update anything that's changed before calculating.
+  </div>
+  {% endif %}
+</div>
+<div id="app">
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <h1>NeoSepsis CDS</h1>
+    <p>v1.0 · Pipeline A–E</p>
+  </div>
+  <div class="sb-steps">
+    <div class="step-item active" onclick="goStep(0)">
+      <div class="step-num" id="sn0">A</div>
+      <div><div class="step-label">Maternal Factors</div><div class="step-sub">Risk score + overrides</div></div>
+    </div>
+    <div class="step-item" onclick="goStep(1)">
+      <div class="step-num" id="sn1">B</div>
+      <div><div class="step-label">Clinical Signs</div><div class="step-sub">Vital signs + exam</div></div>
+    </div>
+    <div class="step-item" onclick="goStep(2)">
+      <div class="step-num" id="sn2">C</div>
+      <div><div class="step-label">Laboratory</div><div class="step-sub">CBC · CRP · Cultures</div></div>
+    </div>
+    <div class="step-item" onclick="goStep(3)">
+      <div class="step-num" id="sn3">D</div>
+      <div><div class="step-label">Imaging</div><div class="step-sub">CXR · AXR · Echo</div></div>
+    </div>
+    <div class="step-item" onclick="goStep(4)">
+      <div class="step-num" id="sn4">E</div>
+      <div><div class="step-label">Results</div><div class="step-sub">Classification + Rx</div></div>
+    </div>
+  </div>
+  <div class="sb-hint">All flags carry forward automatically between flowcharts. Fill in order for best results.</div>
+</div>
+
+<!-- Content -->
+<div id="content">
+
+<!-- STEP 0: Maternal (A) -->
+<div class="step-page active" id="page0">
+<div class="page-header">
+  <div class="fc-badge" style="background:var(--surface2);color:var(--text2)">FLOWCHART A</div>
+  <h2>Maternal &amp; Perinatal Risk Factors</h2>
+  <p>Outputs: MAT_RISK_SCORE · MAT_OVERRIDE_FLAG · PRETERM_FLAG · IAP_GIVEN</p>
+</div>
+
+<div class="section">
+  <div class="section-header">🧬 Patient Basics</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Gestational age at delivery <span>(weeks)</span></label>
+        <input type="number" id="ga" placeholder="e.g. 36" min="22" max="42" step="0.1"></div>
+      <div class="field"><label>Infant age at first sign <span>(hours of life)</span></label>
+        <input type="number" id="age_hrs" placeholder="e.g. 6" min="0" max="672"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🌡 Maternal Fever</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Maternal temperature during labor <span>(°C)</span></label>
+        <input type="number" id="mat_temp" placeholder="e.g. 38.2" min="35" max="42" step="0.1">
+        <span class="hint-text">Leave blank if no fever</span></div>
+      <div class="field"><label>Clinical chorioamnionitis confirmed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'chorioamnionitis','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'chorioamnionitis','no')">No</button>
+        </div>
+        <span class="hint-text">Temp ≥38°C + uterine tenderness or malodorous fluid</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🦠 Maternal Infections</div>
+  <div class="section-body">
+    <div class="row col3">
+      <div class="field"><label>Maternal UTI during pregnancy?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'mat_uti','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'mat_uti','no')">No</button>
+        </div></div>
+      <div class="field"><label>Maternal pneumonia?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'mat_pneu','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'mat_pneu','no')">No</button>
+        </div></div>
+      <div class="field"><label>Other systemic infection?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'mat_other_inf','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'mat_other_inf','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Documented infection or +ve culture?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'mat_doc_inf','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'mat_doc_inf','no')">No</button>
+        </div></div>
+      <div class="field"><label>Maternal TLC in labor <span>(×10⁹/L)</span></label>
+        <input type="number" id="mat_tlc" placeholder="e.g. 15.2" min="0" max="50" step="0.1">
+        <span class="hint-text">Leave blank if unknown</span></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>GBS colonization or infection?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'gbs','yes');showHide('iap-row',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'gbs','no');showHide('iap-row',false)">No</button>
+        </div></div>
+      <div class="field"><label>Maternal gonorrhea?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'gonorrhea','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'gonorrhea','no')">No</button>
+        </div></div>
+    </div>
+    <div id="iap-row" style="display:none">
+      <div class="subfield">
+        <div class="row col1">
+          <div class="field"><label>IAP given ≥4 hours before delivery?</label>
+            <div class="toggle-group">
+              <button class="toggle-btn" onclick="tog(this,'iap_given','yes')">Yes — adequate</button>
+              <button class="toggle-btn" onclick="tog(this,'iap_given','no')">No / Inadequate</button>
+            </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">💧 Membranes &amp; Labor</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Membrane rupture present?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'rom','yes');showHide('rom-detail',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'rom','no');showHide('rom-detail',false)">No</button>
+        </div></div>
+      <div class="field"><label>PPROM (prelabor ROM at &lt;37 wks)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'pprom','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'pprom','no')">No</button>
+        </div></div>
+    </div>
+    <div id="rom-detail" style="display:none">
+      <div class="subfield">
+        <div class="row col1">
+          <div class="field"><label>ROM duration <span>(hours before delivery)</span></label>
+            <input type="number" id="rom_hours" placeholder="e.g. 22" min="0" max="500"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row col1">
+      <div class="field"><label>Prolonged PV leaking (&gt;1 week or &gt;18h)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'pv_leak','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'pv_leak','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>Prolonged labor?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'prol_labor','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'prol_labor','no')">No</button>
+        </div></div>
+      <div class="field"><label>Complicated labor?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'comp_labor','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'comp_labor','no')">No</button>
+        </div></div>
+      <div class="field"><label>Frequent VEs (≥5)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'freq_ve','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'freq_ve','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Meconium-stained fluid?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'msaf','thick')">Thick (Gr II–III)</button>
+          <button class="toggle-btn" onclick="tog(this,'msaf','thin')">Thin (Gr I)</button>
+          <button class="toggle-btn" onclick="tog(this,'msaf','none')">None</button>
+        </div></div>
+      <div class="field"><label>Antepartum fever (≥38°C during pregnancy)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'antepartum_fever','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'antepartum_fever','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Low socioeconomic status?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'low_ses','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'low_ses','no')">No</button>
+        </div></div>
+      <div class="field"><label>Poor antenatal care (&lt;4 visits)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'poor_anc','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'poor_anc','no')">No</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- STEP 1: Clinical Signs (B) -->
+<div class="step-page" id="page1">
+<div class="page-header">
+  <div class="fc-badge" style="background:var(--surface2);color:var(--text2)">FLOWCHART B</div>
+  <h2>Neonatal Clinical Danger Signs</h2>
+  <p>Outputs: CLINICAL_SIGN_COUNT · CLINICAL_OVERRIDE</p>
+</div>
+
+
+<div class="section">
+  <div class="section-header">🏥 APGAR Score (first assessment — assessed before all other signs)</div>
+  <div class="section-body">
+    <div class="row col1">
+      <div class="field"><label>Cry at birth</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'birth_cry','absent')">Absent — no cry</button>
+          <button class="toggle-btn" onclick="tog(this,'birth_cry','delayed')">Delayed / weak</button>
+          <button class="toggle-btn" onclick="tog(this,'birth_cry','immediate')">Immediate &amp; strong</button>
+        </div>
+        <span class="hint-text">Doctor's note: this is the very first sign assessed at delivery</span>
+      </div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>1-minute APGAR score <span>(0–10)</span></label>
+        <input type="number" id="apgar1" placeholder="e.g. 7" min="0" max="10">
+        <span class="hint-text">0–3 = severe · 4–6 = moderate · 7–10 = normal</span>
+      </div>
+      <div class="field"><label>Tone at birth <span>(APGAR Activity component)</span></label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'birth_tone','limp')">Limp (0)</button>
+          <button class="toggle-btn" onclick="tog(this,'birth_tone','some')">Some flexion (1)</button>
+          <button class="toggle-btn" onclick="tog(this,'birth_tone','active')">Active (2)</button>
+        </div>
+        <span class="hint-text">Doctor's note: tone is assessed alongside cry as the first clinical signs</span>
+      </div>
+    </div>
+    <div class="row col2" id="apgar5-row" style="display:none">
+      <div class="field"><label>5-minute APGAR score <span>(0–10, if 1-min was &lt;7)</span></label>
+        <input type="number" id="apgar5" placeholder="e.g. 8" min="0" max="10">
+      </div>
+      <div class="field"><label></label></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🌡 Temperature</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Neonatal axillary temperature <span>(°C)</span></label>
+        <input type="number" id="neo_temp" placeholder="e.g. 37.2" min="30" max="42" step="0.1"></div>
+      <div class="field"><label>Temperature instability (recurrent swings)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'temp_instab','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'temp_instab','no')">No</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">❤️ Cardiovascular &amp; Respiratory</div>
+  <div class="section-body">
+    <div class="row col3">
+      <div class="field"><label>Heart rate <span>(bpm at rest)</span></label>
+        <input type="number" id="hr" placeholder="e.g. 155" min="30" max="300"></div>
+      <div class="field"><label>Respiratory rate <span>(breaths/min)</span></label>
+        <input type="number" id="rr" placeholder="e.g. 65" min="0" max="150"></div>
+      <div class="field"><label>SpO₂ <span>(% in room air)</span></label>
+        <input type="number" id="spo2" placeholder="e.g. 96" min="50" max="100"></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>Grunting (at rest)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'grunting','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'grunting','no')">No</button>
+        </div></div>
+      <div class="field"><label>Nasal flaring?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'flaring','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'flaring','no')">No</button>
+        </div></div>
+      <div class="field"><label>Chest retractions?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'retractions','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'retractions','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>Central cyanosis?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'cyanosis','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'cyanosis','no')">No</button>
+        </div></div>
+      <div class="field"><label>O₂ requirement?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'o2_req','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'o2_req','no')">No</button>
+        </div></div>
+      <div class="field"><label>Apnea</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'apnea','severe')">Severe</button>
+          <button class="toggle-btn" onclick="tog(this,'apnea','recurrent')">Recurrent</button>
+          <button class="toggle-btn" onclick="tog(this,'apnea','brief')">Brief</button>
+          <button class="toggle-btn" onclick="tog(this,'apnea','none')">None</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>CRT <span>(central, seconds)</span></label>
+        <input type="number" id="crt" placeholder="e.g. 2" min="0" max="10" step="0.5"></div>
+      <div class="field"><label>Weak peripheral pulses?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'weak_pulses','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'weak_pulses','no')">No</button>
+        </div></div>
+      <div class="field"><label>Clinical shock?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'shock','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'shock','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>MAP <span>(mmHg, if measured)</span></label>
+        <input type="number" id="map_val" placeholder="e.g. 38" min="0" max="100"></div>
+      <div class="field"><label>Mottled / marbled skin?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'mottled','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'mottled','no')">No</button>
+        </div></div>
+      <div class="field"><label>Urine output <span>(mL/kg/h, if &gt;24h)</span></label>
+        <input type="number" id="urine_op" placeholder="e.g. 1.5" min="0" max="10" step="0.1"></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Sunken fontanelle (at rest)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'sunk_font','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'sunk_font','no')">No</button>
+        </div>
+        <span class="hint-text">Distinct from bulging fontanelle — indicates dehydration/fluid loss</span>
+      </div>
+      <div class="field"><label>Generalised oedema / capillary leak?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'edema','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'edema','no')">No</button>
+        </div>
+        <span class="hint-text">Pitting oedema of hands, feet, or face not due to birth trauma</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🧠 Neurological</div>
+  <div class="section-body">
+    <div class="row col3">
+      <div class="field"><label>Seizures?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'seizures','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'seizures','no')">No</button>
+        </div></div>
+      <div class="field"><label>Bulging fontanelle (at rest)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'bulg_font','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'bulg_font','no')">No</button>
+        </div></div>
+      <div class="field"><label>Altered consciousness?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'alt_consc','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'alt_consc','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>High-pitched cry?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'hp_cry','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'hp_cry','no')">No</button>
+        </div></div>
+      <div class="field"><label>Generalised hypotonia?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'hypotonia','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'hypotonia','no')">No</button>
+        </div></div>
+      <div class="field"><label>Absent/dim Moro reflex?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'moro','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'moro','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Lethargy (drowsy, difficult to rouse)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'lethargy','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'lethargy','no')">No</button>
+        </div>
+        <span class="hint-text">Milder than altered consciousness — responds to stimulation but drowsy</span>
+      </div>
+      <div class="field"><label>Weak cry (ongoing, not just at birth)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'weak_cry','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'weak_cry','no')">No</button>
+        </div>
+        <span class="hint-text">Persistent weak/low-volume cry during examination — distinct from birth cry</span>
+      </div>
+    </div>
+    <div class="row col1">
+      <div class="field"><label>Irritability or unexplained jitteriness?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'irritability','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'irritability','no')">No</button>
+        </div>
+        <span class="hint-text">Persistent irritability/jitteriness not relieved by feeding, holding, or glucose correction</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🍼 Feeding, GI &amp; Skin</div>
+  <div class="section-body">
+    <div class="row col3">
+      <div class="field"><label>Poor feeding (&lt;2/3 volume)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'poor_feed','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'poor_feed','no')">No</button>
+        </div></div>
+      <div class="field"><label>Vomiting</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'vomiting','bilious')">Bilious</button>
+          <button class="toggle-btn" onclick="tog(this,'vomiting','persistent')">Persistent</button>
+          <button class="toggle-btn" onclick="tog(this,'vomiting','none')">None</button>
+        </div></div>
+      <div class="field"><label>Abdominal distension?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'abd_dist','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'abd_dist','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>Abdominal wall erythema?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'abd_erythema','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'abd_erythema','no')">No</button>
+        </div></div>
+      <div class="field"><label>Jaundice in first 24h?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'jaundice_24','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'jaundice_24','no')">No</button>
+        </div></div>
+      <div class="field"><label>Petechiae / bleeding?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'petechiae','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'petechiae','no')">No</button>
+        </div></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>Unexplained pallor?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'pallor','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'pallor','no')">No</button>
+        </div></div>
+      <div class="field"><label>Septic facies?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'septic_facies','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'septic_facies','no')">No</button>
+        </div></div>
+      <div class="field"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🧪 Metabolic (point-of-care)</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Blood glucose <span>(mg/dL)</span></label>
+        <input type="number" id="glucose" placeholder="e.g. 52" min="0" max="600"></div>
+      <div class="field"><label>Base deficit <span>(mmol/L, if blood gas done)</span></label>
+        <input type="number" id="base_def" placeholder="e.g. 6" min="0" max="30" step="0.1">
+        <span class="hint-text">Leave blank if not done</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- STEP 2: Labs (C) -->
+<div class="step-page" id="page2">
+<div class="page-header">
+  <div class="fc-badge" style="background:var(--surface2);color:var(--text2)">FLOWCHART C</div>
+  <h2>Laboratory Evaluation &amp; Cultures</h2>
+  <p>Outputs: LAB_SUPPORT_FLAG · PATHOGEN_CONFIRMED · LAB_SCORE · ANTIBIOTIC_SAFE_TO_STOP</p>
+</div>
+
+<div class="section">
+  <div class="section-header">🧫 Blood Culture</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Blood culture obtained before antibiotics?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'culture_obtained','yes')">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'culture_obtained','no')">No / Not yet</button>
+        </div></div>
+      <div class="field"><label>Culture result</label>
+        <div class="toggle-group" style="flex-wrap:wrap">
+          <button class="toggle-btn" onclick="tog(this,'culture_result','pathogen');showHide('org-detail',true)">+ve Pathogen</button>
+          <button class="toggle-btn" onclick="tog(this,'culture_result','cons');showHide('org-detail',true)">+ve CoNS</button>
+          <button class="toggle-btn" onclick="tog(this,'culture_result','neg_well')">-ve / Well</button>
+          <button class="toggle-btn" onclick="tog(this,'culture_result','pending');showHide('org-detail',false)">Pending</button>
+        </div></div>
+    </div>
+    <div id="org-detail" style="display:none">
+      <div class="subfield">
+        <div class="row col1">
+          <div class="field"><label>Organism (if positive)</label>
+            <select id="organism">
+              <option value="">— Select organism —</option>
+              <option value="GBS">GBS (Streptococcus agalactiae)</option>
+              <option value="ecoli">E. coli</option>
+              <option value="klebsiella">Klebsiella spp.</option>
+              <option value="staph_aureus">S. aureus (MSSA/MRSA)</option>
+              <option value="listeria">Listeria monocytogenes</option>
+              <option value="candida">Candida spp.</option>
+              <option value="cons">CoNS (S. epidermidis etc.)</option>
+              <option value="pseudomonas">Pseudomonas aeruginosa</option>
+              <option value="other_gnr">Other gram-negative rod</option>
+              <option value="other">Other</option>
+            </select></div>
+        </div>
+        <div id="cons-criteria" style="display:none">
+          <hr class="divider">
+          <div class="row col3">
+            <div class="field"><label>Two separate bottles positive?</label>
+              <div class="toggle-group">
+                <button class="toggle-btn" onclick="tog(this,'cons_two','yes')">Yes</button>
+                <button class="toggle-btn" onclick="tog(this,'cons_two','no')">No</button>
+              </div></div>
+            <div class="field"><label>CVC / UVC in situ?</label>
+              <div class="toggle-group">
+                <button class="toggle-btn" onclick="tog(this,'cons_cvc','yes')">Yes</button>
+                <button class="toggle-btn" onclick="tog(this,'cons_cvc','no')">No</button>
+              </div></div>
+            <div class="field"><label>Infant clinically deteriorating?</label>
+              <div class="toggle-group">
+                <button class="toggle-btn" onclick="tog(this,'cons_det','yes')">Yes</button>
+                <button class="toggle-btn" onclick="tog(this,'cons_det','no')">No</button>
+              </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🩸 CBC (age-dependent thresholds)</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>CBC draw time <span>(hours after birth)</span></label>
+        <input type="number" id="cbc_hrs" placeholder="e.g. 8" min="0" max="672"></div>
+      <div class="field"><label>WBC <span>(cells/mm³)</span></label>
+        <input type="number" id="wbc" placeholder="e.g. 12000" min="0" max="100000"></div>
+    </div>
+    <div class="row col3">
+      <div class="field"><label>ANC <span>(cells/mm³)</span></label>
+        <input type="number" id="anc" placeholder="e.g. 2500" min="0" max="50000"></div>
+      <div class="field"><label>I/T ratio</label>
+        <input type="number" id="it_ratio" placeholder="e.g. 0.18" min="0" max="1" step="0.01"></div>
+      <div class="field"><label>Platelets <span>(cells/mm³)</span></label>
+        <input type="number" id="platelets" placeholder="e.g. 180000" min="0" max="1000000"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">📈 CRP (timing-gated)</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>CRP draw time <span>(hours after birth)</span></label>
+        <input type="number" id="crp_hrs" placeholder="e.g. 8" min="0" max="672"></div>
+      <div class="field"><label>CRP value <span>(mg/L)</span></label>
+        <input type="number" id="crp" placeholder="e.g. 12" min="0" max="500" step="0.1"></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Repeat CRP done (at 18–24h)?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'repeat_crp_done','yes');showHide('repeat-crp-val',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'repeat_crp_done','no');showHide('repeat-crp-val',false)">No</button>
+        </div></div>
+      <div id="repeat-crp-val" style="display:none" class="field"><label>Repeat CRP value <span>(mg/L)</span></label>
+        <input type="number" id="repeat_crp" placeholder="e.g. 8" min="0" max="500" step="0.1"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">📊 Procalcitonin (if available)</div>
+  <div class="section-body">
+    <div class="row col1">
+      <div class="field"><label>PCT available at this facility?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'pct_avail','yes');showHide('pct-detail',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'pct_avail','no');showHide('pct-detail',false)">No (skip)</button>
+        </div></div>
+    </div>
+    <div id="pct-detail" style="display:none">
+      <div class="subfield">
+        <div class="row col2">
+          <div class="field"><label>PCT draw time <span>(hours after birth)</span></label>
+            <input type="number" id="pct_hrs" placeholder="e.g. 30" min="0" max="672"></div>
+          <div class="field"><label>PCT value <span>(ng/mL)</span></label>
+            <input type="number" id="pct" placeholder="e.g. 2.5" min="0" max="200" step="0.1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🧠 CSF (if LP done)</div>
+  <div class="section-body">
+    <div class="row col1">
+      <div class="field"><label>Lumbar puncture performed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'lp_done','yes');showHide('csf-detail',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'lp_done','deferred')">Deferred</button>
+          <button class="toggle-btn" onclick="tog(this,'lp_done','no');showHide('csf-detail',false)">Not indicated</button>
+        </div></div>
+    </div>
+    <div id="csf-detail" style="display:none">
+      <div class="subfield">
+        <div class="row col3">
+          <div class="field"><label>CSF WBC <span>(cells/mm³)</span></label>
+            <input type="number" id="csf_wbc" placeholder="e.g. 5" min="0" max="10000"></div>
+          <div class="field"><label>CSF protein <span>(mg/dL)</span></label>
+            <input type="number" id="csf_prot" placeholder="e.g. 80" min="0" max="2000"></div>
+          <div class="field"><label>CSF glucose <span>(mg/dL)</span></label>
+            <input type="number" id="csf_gluc" placeholder="e.g. 50" min="0" max="300"></div>
+        </div>
+        <div class="row col2">
+          <div class="field"><label>Serum glucose at same time <span>(mg/dL)</span></label>
+            <input type="number" id="serum_gluc" placeholder="e.g. 90" min="0" max="600"></div>
+          <div class="field"><label>CSF culture positive?</label>
+            <div class="toggle-group">
+              <button class="toggle-btn" onclick="tog(this,'csf_cult','yes')">Yes</button>
+              <button class="toggle-btn" onclick="tog(this,'csf_cult','no')">No</button>
+            </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🧫 Urine Culture (LOS / age &gt;72h)</div>
+  <div class="section-body">
+    <div class="row col1">
+      <div class="field"><label>Urine culture obtained?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'urine_culture_done','yes');showHide('urine-detail',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'urine_culture_done','no');showHide('urine-detail',false)">No</button>
+          <button class="toggle-btn" onclick="tog(this,'urine_culture_done','not_indicated');showHide('urine-detail',false)">Not indicated (EOS, &lt;72h)</button>
+        </div>
+        <span class="hint-text">Not routinely indicated in EOS (&lt;72h) — the urinary tract is sterile at birth. Indicated for LOS workup.</span>
+      </div>
+    </div>
+    <div id="urine-detail" style="display:none">
+      <div class="subfield">
+        <div class="row col2">
+          <div class="field"><label>Collection method</label>
+            <div class="toggle-group">
+              <button class="toggle-btn" onclick="tog(this,'urine_method','catheter')">Catheter</button>
+              <button class="toggle-btn" onclick="tog(this,'urine_method','suprapubic')">Suprapubic</button>
+              <button class="toggle-btn" onclick="tog(this,'urine_method','bag')">Bag</button>
+            </div>
+            <span class="hint-text">Bag specimens have a high contamination rate — not reliable for diagnosis if positive</span>
+          </div>
+          <div class="field"><label>Result</label>
+            <div class="toggle-group">
+              <button class="toggle-btn" onclick="tog(this,'urine_result','positive')">Positive</button>
+              <button class="toggle-btn" onclick="tog(this,'urine_result','negative')">Negative</button>
+              <button class="toggle-btn" onclick="tog(this,'urine_result','pending')">Pending</button>
+            </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🌡 Clinical trajectory</div>
+  <div class="section-body">
+    <div class="row col1">
+      <div class="field"><label>Is infant clinically well-appearing and improving?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'clin_well','yes')">Yes — improving</button>
+          <button class="toggle-btn" onclick="tog(this,'clin_well','no')">No — unwell / static</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- STEP 3: Imaging (D) -->
+<div class="step-page" id="page3">
+<div class="page-header">
+  <div class="fc-badge" style="background:var(--surface2);color:var(--text2)">FLOWCHART D</div>
+  <h2>Imaging &amp; Localization</h2>
+  <p>Outputs: LOCALIZED_INFECTION_FLAG · IMAGING_FINDING — Only fill imaging that was actually performed</p>
+</div>
+
+<div class="section">
+  <div class="section-header">🫁 Chest X-Ray</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>CXR performed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'cxr_done','yes');showHide('cxr-find',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'cxr_done','no');showHide('cxr-find',false)">No</button>
+        </div></div>
+      <div id="cxr-find" class="field" style="display:none"><label>CXR finding</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'cxr_finding','consolidation')">Consolidation</button>
+          <button class="toggle-btn" onclick="tog(this,'cxr_finding','diffuse')">Diffuse haze</button>
+          <button class="toggle-btn" onclick="tog(this,'cxr_finding','normal')">Normal</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🫃 Abdominal X-Ray</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>AXR performed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'axr_done','yes');showHide('axr-find',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'axr_done','no');showHide('axr-find',false)">No</button>
+        </div></div>
+      <div id="axr-find" class="field" style="display:none"><label>AXR finding</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'axr_finding','pneumatosis')">Pneumatosis / PVG</button>
+          <button class="toggle-btn" onclick="tog(this,'axr_finding','freeair')">Free air</button>
+          <button class="toggle-btn" onclick="tog(this,'axr_finding','dilated')">Dilated loops</button>
+          <button class="toggle-btn" onclick="tog(this,'axr_finding','normal')">Normal</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">🧠 Head Imaging (CUS / CT / MRI)</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Head imaging performed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'head_done','yes');showHide('head-find',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'head_done','no');showHide('head-find',false)">No</button>
+        </div></div>
+      <div id="head-find" class="field" style="display:none"><label>Head imaging finding</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'head_finding','ventriculitis')">Ventriculitis</button>
+          <button class="toggle-btn" onclick="tog(this,'head_finding','abscess')">Abscess</button>
+          <button class="toggle-btn" onclick="tog(this,'head_finding','ivh')">IVH/Hemorrhage</button>
+          <button class="toggle-btn" onclick="tog(this,'head_finding','normal')">Normal</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">❤️ Echo &amp; Abdominal US</div>
+  <div class="section-body">
+    <div class="row col2">
+      <div class="field"><label>Echocardiogram performed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'echo_done','yes');showHide('echo-find',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'echo_done','no');showHide('echo-find',false)">No</button>
+        </div></div>
+      <div id="echo-find" class="field" style="display:none"><label>Echo finding</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'echo_finding','vegetation')">Vegetation</button>
+          <button class="toggle-btn" onclick="tog(this,'echo_finding','structural')">Structural (no veg)</button>
+          <button class="toggle-btn" onclick="tog(this,'echo_finding','normal')">Normal</button>
+        </div></div>
+    </div>
+    <div class="row col2">
+      <div class="field"><label>Abdominal US performed?</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'aus_done','yes');showHide('aus-find',true)">Yes</button>
+          <button class="toggle-btn" onclick="tog(this,'aus_done','no');showHide('aus-find',false)">No</button>
+        </div></div>
+      <div id="aus-find" class="field" style="display:none"><label>Abdominal US finding</label>
+        <div class="toggle-group">
+          <button class="toggle-btn" onclick="tog(this,'aus_finding','abscess')">Abscess</button>
+          <button class="toggle-btn" onclick="tog(this,'aus_finding','bezoar')">Renal bezoar</button>
+          <button class="toggle-btn" onclick="tog(this,'aus_finding','normal')">Normal</button>
+        </div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Results -->
+<div id="results-page">
+  <div class="page-header">
+    <div class="fc-badge" style="background:var(--surface2);color:var(--text2)">FLOWCHART E</div>
+    <h2>Classification &amp; Treatment</h2>
+    <p>All upstream flags processed. Review carefully before clinical application.</p>
+  </div>
+  <div id="results-body"></div>
+</div>
+
+<!-- Nav bar -->
+<div class="nav-bar" id="nav-bar">
+  <button class="btn btn-ghost" id="btn-back" onclick="stepBack()" style="display:none">← Back</button>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="step-indicator" style="font-size:11px;color:var(--text3);font-family:var(--mono)">Step 1 of 4</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-ghost" id="btn-reset" onclick="resetAll()" style="display:none">Reset</button>
+    <button class="btn btn-primary" id="btn-next" onclick="stepNext()">Next →</button>
+    <button class="btn btn-calc" id="btn-calc" onclick="calculate()" style="display:none">Calculate →</button>
+  </div>
+</div>
+
+</div><!-- end content -->
+</div><!-- end app -->
+
+<script>
+// ── State ──────────────────────────────────────────────
+const STUDY_ID = "{{ study_id }}";
+const PREFILL = {{ prefill_json | safe }};
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const state = {};
+let currentStep = 0;
+const TOTAL_STEPS = 4; // 0-3 = form pages, 4 = results
+
+// ── Helpers ────────────────────────────────────────────
+function tog(btn, key, val) {
+  state[key] = val;
+  const grp = btn.closest('.toggle-group');
+  grp.querySelectorAll('.toggle-btn').forEach(b => {
+    b.className = 'toggle-btn';
+    if (b === btn) {
+      // The clicked button always gets a clearly distinct, high-contrast
+      // color - green for an affirmative answer, blue for a negative one.
+      // Both are equally visible; neither looks like the "untouched" state.
+      b.classList.add(val === 'no' || val === 'none' || val === 'pending' || val === 'normal' ? 'sel-no' : 'sel-yes');
+    } else {
+      // Only the sibling(s) actually NOT chosen get dimmed.
+      b.classList.add('sel-inactive');
+    }
+  });
+  // CoNS organism detail
+  if (key === 'organism') {
+    const isCoNS = (val === 'cons');
+    showHide('cons-criteria', isCoNS);
+  }
+  if (key === 'culture_result') {
+    const isPos = (val === 'pathogen' || val === 'cons');
+    showHide('org-detail', isPos);
+  }
+}
+
+function showHide(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = show ? '' : 'none';
+}
+
+function n(id) {
+  const el = document.getElementById(id);
+  if (!el || el.value === '') return null;
+  return parseFloat(el.value);
+}
+
+function is(key, val) { return state[key] === val; }
+function yes(key) { return state[key] === 'yes'; }
+
+// ── Navigation ─────────────────────────────────────────
+function goStep(s) {
+  if (s === 4) { showResults(); return; }
+  currentStep = s;
+  document.querySelectorAll('.step-page').forEach((p,i) => p.classList.toggle('active', i === s));
+  document.getElementById('results-page').style.display = 'none';
+  document.querySelectorAll('.step-item').forEach((item,i) => {
+    item.classList.toggle('active', i === s);
+    item.classList.toggle('done', i < s);
+  });
+  document.getElementById('btn-back').style.display = s > 0 ? '' : 'none';
+  document.getElementById('btn-next').style.display = s < 3 ? '' : 'none';
+  document.getElementById('btn-calc').style.display = s === 3 ? '' : 'none';
+  document.getElementById('btn-reset').style.display = 'none';
+  document.getElementById('step-indicator').textContent = `Step ${s+1} of 4`;
+  document.getElementById('content').scrollTop = 0;
+}
+
+function stepNext() { if (currentStep < 3) goStep(currentStep + 1); }
+function stepBack() { if (currentStep > 0) goStep(currentStep - 1); }
+
+function resetAll() {
+  Object.keys(state).forEach(k => delete state[k]);
+  document.querySelectorAll('input[type=number],input[type=text],select').forEach(el => el.value = '');
+  document.querySelectorAll('.toggle-btn').forEach(b => b.className = 'toggle-btn');
+  document.querySelectorAll('[id$="-row"],[id$="-detail"],[id$="-find"],[id$="-val"]').forEach(el => el.style.display = 'none');
+  goStep(0);
+}
+
+// ── FLOWCHART A ────────────────────────────────────────
+function computeA() {
+  let score = 0;
+  const flags = [];
+  let overrideFlag = false;
+  const ga = n('ga') || 40;
+  const pretermFlag = ga < 37;
+
+  // Maternal temp
+  const mt = n('mat_temp');
+  if (mt !== null) {
+    if (mt >= 39.0)      { score += 3; flags.push('Mat fever ≥39°C (+3)'); }
+    else if (mt >= 38.5) { score += 2; flags.push('Mat fever 38.5–38.9°C (+2)'); }
+    else if (mt >= 38.0) { score += 1; flags.push('Mat fever 38.0–38.4°C (+1)'); }
+  }
+
+  // Chorioamnionitis
+  if (yes('chorioamnionitis')) { overrideFlag = true; flags.push('⚠ CHORIOAMNIONITIS OVERRIDE'); }
+
+  // Infections
+  if (yes('mat_uti'))      { score += 2; flags.push('Mat UTI (+2)'); }
+  if (yes('mat_pneu'))     { score += 2; flags.push('Mat pneumonia (+2)'); }
+  if (yes('mat_other_inf')){ score += 1; flags.push('Other mat infection (+1)'); }
+  if (yes('mat_doc_inf'))  { score += 2; flags.push('Documented infection/+ve culture (+2)'); }
+
+  // TLC
+  const tlc = n('mat_tlc');
+  if (tlc !== null) {
+    if (tlc > 18)      { score += 2; flags.push('Mat TLC >18×10⁹/L (+2)'); }
+    else if (tlc > 13) { score += 1; flags.push('Mat TLC 13–18×10⁹/L (+1)'); }
+  }
+
+  // GBS
+  if (yes('gbs'))  { score += 2; flags.push('GBS colonisation (+2)'); }
+  if (yes('gonorrhea')){ score += 2; flags.push('Maternal gonorrhea (+2)'); }
+
+  // ROM
+  if (yes('rom')) {
+    const romH = n('rom_hours') || 0;
+    if (pretermFlag) {
+      if (romH > 18)     { score += 2; flags.push('Preterm ROM >18h (+2)'); }
+      else if (romH >= 12){ score += 1; flags.push('Preterm ROM 12–18h (+1)'); }
+    } else {
+      if (romH > 24)     { score += 2; flags.push('Term ROM >24h (+2)'); }
+      else if (romH >= 18){ score += 1; flags.push('Term ROM 18–24h (+1)'); }
+    }
+  }
+
+  if (yes('pv_leak'))   { score += 2; flags.push('Prolonged PV leaking (+2)'); }
+  if (yes('pprom'))     { score += 2; flags.push('PPROM (+2)'); }
+  if (yes('prol_labor')){ score += 1; flags.push('Prolonged labor (+1)'); }
+  if (yes('comp_labor')){ score += 1; flags.push('Complicated labor (+1)'); }
+  if (yes('freq_ve'))   { score += 1; flags.push('Frequent VEs ≥5 (+1)'); }
+
+  const msaf = state['msaf'];
+  if (msaf === 'thick') { score += 2; flags.push('Thick MSAF Gr II–III (+2)'); }
+  else if (msaf === 'thin') { score += 1; flags.push('Thin MSAF Gr I (+1)'); }
+
+  if (yes('antepartum_fever')){ score += 1; flags.push('Antepartum fever (+1)'); }
+
+  // GA band
+  let gaBand = 'term';
+  if (ga < 28)       gaBand = 'extremely_preterm';
+  else if (ga < 32)  gaBand = 'very_preterm';
+  else if (ga < 37)  gaBand = 'mod_preterm';
+
+  return {
+    MAT_RISK_SCORE: score,
+    MAT_OVERRIDE_FLAG: overrideFlag,
+    PRETERM_FLAG: pretermFlag,
+    GA_BAND: gaBand,
+    IAP_GIVEN: yes('iap_given'),
+    GA: ga,
+    flags_A: flags
+  };
+}
+
+// ── FLOWCHART B ────────────────────────────────────────
+function computeB(A) {
+  let score = 0;
+  let override = false;
+  const flags = [];
+  const overrides = [];
+  const ga = A.GA || 40;
+
+  // ── APGAR (doctor feedback: assessed first, before any other sign) ──
+  const birthCry = state['birth_cry'];
+  if (birthCry === 'absent') {
+    override = true;
+    overrides.push('No cry at birth — absent respiratory effort');
+  } else if (birthCry === 'delayed') {
+    score += 2;
+    flags.push('Delayed/weak cry at birth (+2)');
+  }
+
+  const birthTone = state['birth_tone'];
+  if (birthTone === 'limp') {
+    score += 2;
+    flags.push('Limp tone at birth — APGAR Activity 0 (+2)');
+  } else if (birthTone === 'some') {
+    score += 1;
+    flags.push('Reduced tone at birth — APGAR Activity 1 (+1)');
+  }
+
+  const apgar1 = n('apgar1');
+  if (apgar1 !== null) {
+    if (apgar1 <= 3) {
+      override = true;
+      overrides.push('1-min APGAR 0–3: severe neonatal depression');
+    } else if (apgar1 <= 6) {
+      score += 3;
+      flags.push(`1-min APGAR ${apgar1} (4–6): moderate depression (+3)`);
+    }
+    // Normal APGAR (7-10) does not add score
+  }
+
+  const apgar5 = n('apgar5');
+  if (apgar5 !== null && apgar1 !== null && apgar1 < 7) {
+    if (apgar5 < 7) {
+      score += 2;
+      flags.push(`5-min APGAR ${apgar5} still <7: persistent depression (+2)`);
+    } else {
+      flags.push(`5-min APGAR ${apgar5}: recovery noted (1-min score stands)`);
+    }
+  }
+
+  // Temp
+  const nt = n('neo_temp');
+  if (nt !== null) {
+    if (nt >= 38.5)       { override = true; overrides.push('Neonatal temp ≥38.5°C'); }
+    else if (nt >= 38.0)  { score += 2; flags.push('Neonatal fever 38.0–38.4°C (+2)'); }
+    else if (nt >= 37.5)  { score += 1; flags.push('Low-grade fever 37.5–37.9°C (+1)'); }
+    if (nt < 35.0)        { override = true; overrides.push('Severe hypothermia <35°C'); }
+    else if (nt < 36.0)   { score += 2; flags.push('Mild hypothermia 35–35.9°C (+2)'); }
+    else if (nt < 36.5)   { score += 1; flags.push('Cold stress/borderline hypothermia 36.0–36.4°C (+1)'); }
+  }
+
+  if (yes('temp_instab')) { score += 2; flags.push('Temp instability (+2)'); }
+
+  // HR
+  const hr = n('hr');
+  if (hr !== null) {
+    if (hr >= 180)     { override = true; overrides.push('HR ≥180 bpm'); }
+    else if (hr >= 160){ score += 1; flags.push('HR 160–179 bpm (+1)'); }
+    if (hr < 80)       { override = true; overrides.push('HR <80 bpm'); }
+    else if (hr < 100) { score += 2; flags.push('Bradycardia 80–99 bpm (+2)'); }
+  }
+
+  // RR
+  const rr = n('rr');
+  if (rr !== null) {
+    if (rr >= 90)     { override = true; overrides.push('RR ≥90/min'); }
+    else if (rr >= 70){ score += 2; flags.push('RR 70–89/min (+2)'); }
+    else if (rr >= 61){ score += 1; flags.push('RR 61–69/min (+1)'); }
+  }
+
+  // Resp quality
+  if (yes('grunting'))    { score += 2; flags.push('Grunting (+2)'); }
+  if (yes('flaring'))     { score += 1; flags.push('Nasal flaring (+1)'); }
+  if (yes('retractions')) { score += 2; flags.push('Chest retractions (+2)'); }
+  if (yes('cyanosis'))    { override = true; overrides.push('Central cyanosis'); }
+  if (yes('o2_req'))      { score += 2; flags.push('O₂ requirement (+2)'); }
+
+  // SpO2
+  const spo2 = n('spo2');
+  if (spo2 !== null) {
+    if (spo2 < 90)     { override = true; overrides.push('SpO₂ <90%'); }
+    else if (spo2 < 95){ score += 2; flags.push('SpO₂ 90–94% (+2)'); }
+  }
+
+  // Apnea
+  const ap = state['apnea'];
+  if (ap === 'severe')        { override = true; overrides.push('Severe apnea'); }
+  else if (ap === 'recurrent'){ score += 2; flags.push('Recurrent apnea (+2)'); }
+  else if (ap === 'brief')    { score += 1; flags.push('Brief apnea (+1)'); }
+
+  // CV
+  const crt = n('crt');
+  if (crt !== null) {
+    if (crt > 4)     { override = true; overrides.push('CRT >4s'); }
+    else if (crt >= 3){ score += 1; flags.push('CRT 3–4s (+1)'); }
+  }
+
+  if (yes('shock'))       { override = true; overrides.push('Clinical shock'); }
+  if (yes('weak_pulses')) { score += 2; flags.push('Weak pulses (+2)'); }
+  if (yes('mottled'))     { score += 2; flags.push('Mottled skin (+2)'); }
+  if (yes('sunk_font'))   { score += 2; flags.push('Sunken fontanelle (+2)'); }
+  if (yes('edema'))       { score += 2; flags.push('Generalised oedema/capillary leak (+2)'); }
+
+  const mapVal = n('map_val');
+  if (mapVal !== null && mapVal < ga) { score += 2; flags.push(`Hypotension MAP<GA (${mapVal}<${Math.round(ga)}) (+2)`); }
+
+  const uo = n('urine_op');
+  if (uo !== null && uo < 1) { score += 1; flags.push('Oliguria <1 mL/kg/h (+1)'); }
+
+  // Neuro
+  if (yes('seizures'))   { override = true; overrides.push('Seizures'); }
+  if (yes('bulg_font'))  { override = true; overrides.push('Bulging fontanelle'); }
+  if (yes('alt_consc'))  { override = true; overrides.push('Altered consciousness'); }
+  if (yes('hp_cry'))     { score += 2; flags.push('High-pitched cry (+2)'); }
+  if (yes('hypotonia'))  { score += 2; flags.push('Generalised hypotonia (+2)'); }
+  if (yes('moro'))       { score += 1; flags.push('Absent/dim Moro (+1)'); }
+  if (yes('lethargy'))   { score += 2; flags.push('Lethargy — difficult to rouse (+2)'); }
+  if (yes('weak_cry'))   { score += 1; flags.push('Weak cry (ongoing examination finding) (+1)'); }
+
+  // GI/skin
+  if (yes('poor_feed'))  { score += 2; flags.push('Poor feeding (+2)'); }
+  const vom = state['vomiting'];
+  if (vom === 'bilious' || vom === 'persistent') { score += 2; flags.push('Vomiting (+2)'); }
+  if (yes('abd_dist'))   { score += 2; flags.push('Abdominal distension (+2)'); }
+  if (yes('abd_erythema')){ override = true; overrides.push('Abdominal wall erythema'); }
+  if (yes('jaundice_24')){ override = true; overrides.push('Jaundice <24h'); }
+  if (yes('petechiae'))  { score += 2; flags.push('Petechiae/bleeding (+2)'); }
+  if (yes('pallor'))     { score += 2; flags.push('Pallor (+2)'); }
+  if (yes('septic_facies')){ score += 2; flags.push('Septic facies (+2)'); }
+
+  // Metabolic
+  const gluc = n('glucose');
+  if (gluc !== null) {
+    if (gluc < 20)       { override = true; overrides.push('Severe hypoglycemia <20 mg/dL'); }
+    else if (gluc < 36)  { score += 2; flags.push('Hypoglycemia 20–35 mg/dL (+2)'); }
+    else if (gluc < 45)  { score += 1; flags.push('Mild hypoglycemia 36–44 mg/dL (+1)'); }
+    else if (gluc >= 200){ score += 2; flags.push('Hyperglycemia ≥200 mg/dL (+2)'); }
+    else if (gluc >= 150){ score += 1; flags.push('Hyperglycemia 150–199 mg/dL (+1)'); }
+  }
+
+  const bd = n('base_def');
+  if (bd !== null) {
+    if (bd >= 15)     { override = true; overrides.push('Severe metabolic acidosis BD≥15'); }
+    else if (bd >= 10){ score += 2; flags.push('Metabolic acidosis BD 10–14 (+2)'); }
+  }
+
+  return {
+    CLINICAL_SIGN_COUNT: score,
+    CLINICAL_OVERRIDE: override,
+    flags_B: flags,
+    overrides_B: overrides
+  };
+}
+
+// ── FLOWCHART C ────────────────────────────────────────
+function computeC(A) {
+  let labScore = 0;
+  let labSupportFlag = false;
+  let pathogenConfirmed = false;
+  let csfAbnormal = false;
+  let antiSafeStop = false;
+  const flags = [];
+  const preterm = A.PRETERM_FLAG;
+  const organism = document.getElementById('organism').value;
+
+  // Blood culture
+  const cultureCulture = state['culture_result'];
+  if (cultureCulture === 'pathogen') {
+    // True pathogen (non-CoNS)
+    pathogenConfirmed = true;
+    flags.push(`+ve culture: ${organism||'pathogen'}`);
+  } else if (cultureCulture === 'cons') {
+    const consCriteria = yes('cons_two') || yes('cons_cvc') || yes('cons_det');
+    if (consCriteria) { pathogenConfirmed = true; flags.push('CoNS — true infection criteria met'); }
+    else flags.push('CoNS — likely contaminant (criteria not met)');
+  } else if (cultureCulture === 'neg_well') {
+    // negative — feeds stop rule
+    flags.push('Blood culture negative');
+  }
+
+  // CBC
+  const cbcH = n('cbc_hrs');
+  const wbc = n('wbc');
+  const anc = n('anc');
+  const itR = n('it_ratio');
+  const plt = n('platelets');
+
+  if (cbcH !== null && cbcH >= 6) {
+    if (wbc !== null) {
+      if (wbc < 5000)                              { labScore += 3; flags.push('Leukopenia WBC<5000 (+3)'); }
+      else if (wbc > 20000 && cbcH <= 12)          { labScore += 2; flags.push('Leukocytosis >20k at 6–12h (+2)'); }
+      else if (wbc > 15000 && cbcH > 12)           { labScore += 2; flags.push('Leukocytosis >15k at >12h (+2)'); }
+    }
+    if (anc !== null) {
+      if (anc < 500)                               { labScore += 3; flags.push('Severe neutropenia ANC<500 (+3)'); }
+      else if (!preterm && cbcH <= 12 && anc < 1750){ labScore += 2; flags.push('Neutropenia (term) ANC<1750 (+2)'); }
+      else if (!preterm && cbcH > 12 && anc < 1000) { labScore += 2; flags.push('Neutropenia (term) ANC<1000 (+2)'); }
+      else if (preterm && anc < 1000)               { labScore += 2; flags.push('Neutropenia (preterm) ANC<1000 (+2)'); }
+    }
+    if (itR !== null) {
+      if (!preterm && itR > 0.27)  { labScore += 2; flags.push('I/T ratio >0.27 term (+2)'); }
+      else if (preterm && itR > 0.22){ labScore += 2; flags.push('I/T ratio >0.22 preterm (+2)'); }
+    }
+    if (plt !== null) {
+      if (plt < 50000)       { labScore += 3; flags.push('Severe thrombocytopenia <50k (+3)'); }
+      else if (plt < 100000) { labScore += 2; flags.push('Moderate thrombocytopenia <100k (+2)'); }
+      else if (plt < 150000) { labScore += 1; flags.push('Mild thrombocytopenia <150k (+1)'); }
+    }
+  } else if (cbcH !== null && cbcH < 6) {
+    flags.push('CBC drawn <6h — limited interpretability');
+    if (wbc !== null && wbc < 5000) { labScore += 3; flags.push('Leukopenia (always significant) (+3)'); }
+  }
+
+  // CRP
+  const crpH = n('crp_hrs');
+  const crpV = n('crp');
+  let crpNormal = false;
+  if (crpH !== null && crpH >= 6 && crpV !== null) {
+    if (crpV >= 100)     { labScore += 3; labSupportFlag = true; flags.push('CRP ≥100 mg/L (+3, LAB_SUPPORT)'); }
+    else if (crpV >= 50) { labScore += 3; labSupportFlag = true; flags.push('CRP 50–99 mg/L (+3, LAB_SUPPORT)'); }
+    else if (crpV >= 10) { labScore += 2; flags.push('CRP 10–49 mg/L (+2)'); }
+    else                 { crpNormal = true; flags.push('CRP <10 mg/L (normal)'); }
+  } else if (crpH !== null && crpH < 6) {
+    flags.push('CRP drawn <6h — not interpretable');
+  }
+
+  // Repeat CRP
+  const repCRPDone = yes('repeat_crp_done');
+  const repCRP = n('repeat_crp');
+  let repCRPNormal = false;
+  if (repCRPDone && repCRP !== null) {
+    if (repCRP >= 10 || (crpV !== null && (repCRP - crpV) > 10)) {
+      labScore += 3; labSupportFlag = true; flags.push('Repeat CRP rising/≥10 (+3, LAB_SUPPORT)');
+    } else {
+      repCRPNormal = true; flags.push('Repeat CRP <10 mg/L (normal)');
+    }
+  }
+
+  // PCT
+  if (yes('pct_avail')) {
+    const pctH = n('pct_hrs');
+    const pctV = n('pct');
+    if (pctH !== null && pctV !== null) {
+      if (pctH < 24) {
+        flags.push('PCT drawn <24h — physiologic surge; interpret with caution');
+      } else if (pctH < 48) {
+        if (pctV >= 10)    { labScore += 3; labSupportFlag = true; flags.push('PCT ≥10 ng/mL at 24–48h (+3, LAB_SUPPORT)'); }
+        else if (pctV >= 2){ labScore += 2; flags.push('PCT 2–9.9 ng/mL at 24–48h (+2)'); }
+      } else {
+        if (pctV >= 2.0)   { labScore += 3; labSupportFlag = true; flags.push('PCT ≥2.0 ng/mL >48h (+3, LAB_SUPPORT)'); }
+        else if (pctV >= 0.5){ labScore += 2; flags.push('PCT 0.5–1.9 ng/mL >48h (+2)'); }
+      }
+    }
+  }
+
+  // CSF
+  if (is('lp_done','yes')) {
+    const csfW = n('csf_wbc');
+    const csfP = n('csf_prot');
+    const csfG = n('csf_gluc');
+    const serG = n('serum_gluc');
+    const csfR = (csfG !== null && serG !== null && serG > 0) ? csfG / serG : null;
+    const csfCult = yes('csf_cult');
+
+    if (preterm) {
+      if ((csfW !== null && csfW > 25)||(csfP !== null && csfP > 200)||(csfG !== null && csfG < 30)||(csfR !== null && csfR < 0.5)||csfCult) {
+        csfAbnormal = true; pathogenConfirmed = true;
+        flags.push('CSF abnormal (preterm thresholds) — meningitis');
+      }
+    } else {
+      if ((csfW !== null && csfW > 20)||(csfP !== null && csfP > 150)||(csfG !== null && csfG < 40)||(csfR !== null && csfR < 0.6)||csfCult) {
+        csfAbnormal = true; pathogenConfirmed = true;
+        flags.push('CSF abnormal (term thresholds) — meningitis');
+      }
+    }
+    if (!csfAbnormal) flags.push('CSF within normal limits');
+  }
+
+  // LAB_SUPPORT_FLAG threshold
+  if (labScore >= 5) labSupportFlag = true;
+
+  // Antibiotic safe to stop
+  antiSafeStop = (
+    (cultureCulture === 'neg_well') &&
+    crpNormal && repCRPDone && repCRPNormal &&
+    !pathogenConfirmed && !csfAbnormal &&
+    yes('clin_well')
+  );
+
+  return {
+    LAB_SUPPORT_FLAG: labSupportFlag,
+    PATHOGEN_CONFIRMED: pathogenConfirmed,
+    LAB_SCORE: labScore,
+    ANTIBIOTIC_SAFE_TO_STOP: antiSafeStop,
+    CSF_ABNORMAL: csfAbnormal,
+    CULTURE_OBTAINED: yes('culture_obtained'),
+    ORGANISM: organism,
+    flags_C: flags
+  };
+}
+
+// ── FLOWCHART D ────────────────────────────────────────
+function computeD() {
+  let locFlag = false;
+  let imagingFinding = 'NONE';
+  const flags = [];
+  const priority = ['ENDOCARDITIS','ABSCESS','NEC_PERFORATED','NEC','MENINGITIS_STRUCTURAL','PNEUMONIA'];
+  const findings = [];
+
+  if (yes('cxr_done')) {
+    const f = state['cxr_finding'];
+    if (f === 'consolidation') { locFlag = true; findings.push('PNEUMONIA'); flags.push('CXR: consolidation → PNEUMONIA'); }
+    else if (f === 'diffuse') flags.push('CXR: diffuse haze (non-specific)');
+    else flags.push('CXR: normal');
+  }
+  if (yes('axr_done')) {
+    const f = state['axr_finding'];
+    if (f === 'pneumatosis') { locFlag = true; findings.push('NEC'); flags.push('AXR: pneumatosis/PVG → NEC Stage II'); }
+    else if (f === 'freeair') { locFlag = true; findings.push('NEC_PERFORATED'); flags.push('AXR: free air → NEC Stage III — SURGICAL EMERGENCY'); }
+    else if (f === 'dilated') flags.push('AXR: dilated loops (non-specific)');
+    else flags.push('AXR: normal');
+  }
+  if (yes('head_done')) {
+    const f = state['head_finding'];
+    if (f === 'ventriculitis') { locFlag = true; findings.push('MENINGITIS_STRUCTURAL'); flags.push('Head imaging: ventriculitis'); }
+    else if (f === 'abscess')  { locFlag = true; findings.push('ABSCESS'); flags.push('Head imaging: intracranial abscess'); }
+    else flags.push('Head imaging: no structural finding');
+  }
+  if (yes('echo_done')) {
+    const f = state['echo_finding'];
+    if (f === 'vegetation') { locFlag = true; findings.push('ENDOCARDITIS'); flags.push('Echo: vegetation → ENDOCARDITIS'); }
+    else flags.push('Echo: no vegetation');
+  }
+  if (yes('aus_done')) {
+    const f = state['aus_finding'];
+    if (f === 'abscess' || f === 'bezoar') { locFlag = true; findings.push('ABSCESS'); flags.push(`US: ${f} confirmed`); }
+    else flags.push('Abdominal US: normal');
+  }
+
+  for (const p of priority) {
+    if (findings.includes(p)) { imagingFinding = p; break; }
+  }
+
+  return { LOCALIZED_INFECTION_FLAG: locFlag, IMAGING_FINDING: imagingFinding, flags_D: flags };
+}
+
+// ── FLOWCHART E ────────────────────────────────────────
+function computeE(A, B, C, D) {
+  const ageH = n('age_hrs') || 0;
+  const timing = ageH <= 72 ? 'EOS' : 'LOS';
+
+  // Classification logic
+  let cls = 'NONE';
+
+  if (C.PATHOGEN_CONFIRMED) {
+    cls = 'PROVEN';
+  } else {
+    // PROBABLE
+    const prob = (
+      (B.CLINICAL_OVERRIDE && C.LAB_SUPPORT_FLAG) ||
+      (B.CLINICAL_SIGN_COUNT >= 3 && C.LAB_SUPPORT_FLAG) ||
+      (A.MAT_OVERRIDE_FLAG && B.CLINICAL_SIGN_COUNT >= 2 && C.LAB_SUPPORT_FLAG) ||
+      (B.CLINICAL_OVERRIDE && A.MAT_OVERRIDE_FLAG)
+    );
+    if (prob) {
+      cls = 'PROBABLE';
+    } else {
+      // POSSIBLE
+      const poss = (
+        (B.CLINICAL_SIGN_COUNT >= 2 && C.LAB_SCORE >= 2 && !C.LAB_SUPPORT_FLAG) ||
+        B.CLINICAL_OVERRIDE ||
+        (A.MAT_OVERRIDE_FLAG && B.CLINICAL_SIGN_COUNT >= 1) ||
+        (A.MAT_RISK_SCORE >= 6 && B.CLINICAL_SIGN_COUNT >= 1) ||
+        (A.PRETERM_FLAG && B.CLINICAL_SIGN_COUNT >= 1 && A.MAT_RISK_SCORE >= 3)
+      );
+      if (poss) cls = 'POSSIBLE';
+    }
+  }
+
+  // Observation-only pathway for the mildest Possible cases (matches
+  // scoring.py exactly - see the server-side comment for rationale)
+  const observationOnly = (
+    cls === 'POSSIBLE' &&
+    B.CLINICAL_SIGN_COUNT <= 2 &&
+    C.LAB_SCORE < 3 &&
+    !B.CLINICAL_OVERRIDE &&
+    !A.PRETERM_FLAG &&
+    !C.PATHOGEN_CONFIRMED
+  );
+
+  // Regimen
+  let regimen = [], regimenDetail = [];
+  if (cls !== 'NONE' && !observationOnly) {
+    const org = C.ORGANISM;
+    if (C.PATHOGEN_CONFIRMED && org) {
+      switch(org) {
+        case 'GBS':
+          regimen = ['Penicillin G'];
+          regimenDetail = [C.CSF_ABNORMAL ? '450,000 units/kg/day ÷ q8h' : '100,000–150,000 units/kg/day ÷ q12h'];
+          break;
+        case 'listeria':
+          regimen = ['Ampicillin', 'Gentamicin'];
+          regimenDetail = ['50 mg/kg/dose q6h IV', '4–5 mg/kg/day once daily'];
+          break;
+        case 'staph_aureus':
+          regimen = ['Cloxacillin (if MSSA) OR Vancomycin (if MRSA)'];
+          regimenDetail = ['MSSA: 50 mg/kg/dose q6h IV | MRSA: 15 mg/kg/dose q6-8h (trough 10–15)'];
+          break;
+        case 'candida':
+          regimen = ['Fluconazole (if >1kg, no prior azole)', 'OR Amphotericin B (<1kg or resistant)'];
+          regimenDetail = ['12 mg/kg loading → 6 mg/kg/day IV', '1 mg/kg/day IV'];
+          break;
+        default: // GN or other
+          regimen = timing === 'EOS' ? ['Cefotaxime', 'Gentamicin'] : ['Cefotaxime', 'Vancomycin'];
+          regimenDetail = ['50 mg/kg/dose q6-8h', timing === 'EOS' ? '4–5 mg/kg/day once daily' : '15 mg/kg/dose q6-8h'];
+      }
+    } else {
+      if (timing === 'EOS') {
+        regimen = ['Ceftazidime OR Cefotaxime', 'Amikacin OR Gentamicin'];
+        regimenDetail = ['Ceftazidime 50 mg/kg/dose q8-12h IV  |  Cefotaxime 50 mg/kg/dose q6-8h IV', 'Amikacin 15 mg/kg/day once daily  |  Gentamicin 4-5 mg/kg/day once daily'];
+        if (C.CSF_ABNORMAL) { regimen.push('Cefotaxime'); regimenDetail.push('50 mg/kg/dose q6h IV (meningitis dose)'); }
+      } else {
+        regimen = ['Vancomycin', 'Gentamicin'];
+        regimenDetail = ['15 mg/kg/dose q8-12h (adjust by GA/age)', '4–5 mg/kg/day IV once daily'];
+      }
+    }
+  }
+
+  // Duration
+  let days = 0;
+  if (observationOnly) days = 0;
+  else if (cls === 'PROVEN')    days = 10;
+  else if (cls === 'PROBABLE') days = 7;
+  else if (cls === 'POSSIBLE') days = 5;
+
+  const gaBand = A.GA_BAND;
+  if (A.PRETERM_FLAG && cls !== 'NONE' && !observationOnly) {
+    if (gaBand === 'extremely_preterm') days += 4;
+    else if (gaBand === 'very_preterm') days += 3;
+    else days += 2;
+  }
+
+  if (!observationOnly) {
+    if (C.CSF_ABNORMAL) days = Math.max(days, 21);
+    if (D.IMAGING_FINDING === 'ENDOCARDITIS') days = Math.max(days, 42);
+    if (D.IMAGING_FINDING === 'NEC' || D.IMAGING_FINDING === 'NEC_PERFORATED') days = Math.max(days, 10);
+    if (D.IMAGING_FINDING === 'ABSCESS') days = Math.max(days, 28);
+  }
+
+  // Stop rule eligibility
+  const stopEligible = C.ANTIBIOTIC_SAFE_TO_STOP && !D.LOCALIZED_INFECTION_FLAG && !C.CSF_ABNORMAL && D.IMAGING_FINDING === 'NONE';
+
+  // Antifungal prophylaxis
+  const ga = A.GA;
+  const antifungal = (ga < 32 || (!ga && A.PRETERM_FLAG)) && cls !== 'NONE' && !observationOnly;
+
+  // Reason string
+  const reasons = [];
+  if (B.overrides_B.length) reasons.push(`Clinical overrides: ${B.overrides_B.join(', ')}`);
+  if (A.MAT_OVERRIDE_FLAG) reasons.push('Maternal override: chorioamnionitis');
+  if (C.PATHOGEN_CONFIRMED) reasons.push(`Pathogen confirmed${C.ORGANISM ? ': ' + C.ORGANISM : ''}`);
+  if (C.LAB_SUPPORT_FLAG) reasons.push(`Lab support flag active (score=${C.LAB_SCORE})`);
+
+  return { cls, timing, regimen, regimenDetail, days, stopEligible, antifungal, reasons, observationOnly };
+}
+
+// ── CALCULATE & RENDER ─────────────────────────────────
+function calculate() {
+  const A = computeA();
+  const B = computeB(A);
+  const C = computeC(A);
+  const D = computeD();
+  const E = computeE(A, B, C, D);
+  showResults(A, B, C, D, E);
+  saveToServer();
+}
+
+// ── SAVE TO SERVER ──────────────────────────────────────
+// The browser's own computation above is shown immediately for instant
+// doctor feedback. Separately, the raw answers are sent to the server,
+// which independently recomputes the classification (scoring.py) and
+// saves that as the authoritative record - the server never trusts a
+// classification value coming from the browser.
+const NUMERIC_FIELD_IDS = [
+  'ga','age_hrs','mat_temp','mat_tlc','rom_hours','apgar1','apgar5','neo_temp',
+  'hr','rr','spo2','crt','map_val','urine_op','glucose','base_def',
+  'cbc_hrs','wbc','anc','it_ratio','platelets','crp_hrs','crp','repeat_crp',
+  'pct_hrs','pct','csf_wbc','csf_prot','csf_gluc','serum_gluc'
+];
+
+// ── SERVER-CONFIRMED NODE BREAKDOWN ─────────────────────
+// This is the authoritative record of exactly which flowchart nodes fired,
+// as computed server-side - distinct from the instant browser estimate
+// shown above (which is for immediate feedback only).
+function renderSavedNodeBreakdown(nodes) {
+  const existing = document.getElementById('node-breakdown-box');
+  if (existing) existing.remove();
+
+  const box = document.createElement('div');
+  box.id = 'node-breakdown-box';
+  box.className = 'res-card';
+  box.style.marginBottom = '16px';
+
+  if (!nodes.length) {
+    box.innerHTML = `<h3>Why This Decision (server-confirmed)</h3><p style="font-size:12px;color:var(--text2)">No individual nodes fired for this case.</p>`;
+  } else {
+    const rows = nodes.map(node => `
+      <tr>
+        <td><span class="badge ${node.override ? 'admin' : 'doctor'}">${node.flowchart}</span></td>
+        <td class="mono" style="font-family:'IBM Plex Mono',monospace;font-size:11px">${node.node_id}</td>
+        <td style="font-size:12px">${node.label}</td>
+        <td style="font-size:12px">${node.override ? '<span style="color:var(--red)">OVERRIDE</span>' : '+' + node.points}</td>
+      </tr>`).join('');
+    box.innerHTML = `
+      <h3>Why This Decision (server-confirmed)</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">
+        <tr><th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px;text-transform:uppercase">FC</th><th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px;text-transform:uppercase">Node</th><th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px;text-transform:uppercase">Finding</th><th style="text-align:left;padding:6px 8px;color:var(--text3);font-size:10px;text-transform:uppercase">Contribution</th></tr>
+        ${rows}
+      </table>`;
+  }
+  document.getElementById('results-body').appendChild(box);
+}
+
+function buildPayload() {
+  const payload = Object.assign({}, state);
+  NUMERIC_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value !== '') payload[id] = el.value;
+  });
+  const org = document.getElementById('organism');
+  if (org && org.value) payload['organism'] = org.value;
+  return payload;
+}
+
+function saveToServer() {
+  const banner = document.getElementById('save-status');
+  if (banner) banner.remove();
+  const existingReview = document.getElementById('doctor-review-box');
+  if (existingReview) existingReview.remove();
+
+  fetch(`/assessment/${STUDY_ID}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify(buildPayload())
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) throw new Error(data.error);
+    const div = document.createElement('div');
+    div.id = 'save-status';
+    div.style.cssText = 'background:var(--green-bg);border:1px solid #1a5c2a;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--green)';
+    div.innerHTML = `✓ Saved to patient record &nbsp;·&nbsp; Assessment #${data.assessment_id} &nbsp;·&nbsp; Server-confirmed classification: <strong>${data.classification}</strong>`;
+    document.getElementById('results-body').prepend(div);
+    renderSavedNodeBreakdown(data.triggered_nodes || []);
+    renderDoctorReviewPrompt(data.assessment_id, data.classification);
+  })
+  .catch(err => {
+    const div = document.createElement('div');
+    div.id = 'save-status';
+    div.style.cssText = 'background:var(--red-bg);border:1px solid var(--red-dim);border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--red)';
+    div.innerHTML = `⚠ Could not save to server: ${err.message}. The result above has NOT been recorded - please retry.`;
+    document.getElementById('results-body').prepend(div);
+  });
+}
+
+// ── DOCTOR'S INDEPENDENT ASSESSMENT ─────────────────────
+// Captured separately from (never overwriting) the system's classification
+// above. Fast path: one tap to agree. Only asks for details if the doctor's
+// own clinical judgment differs - that disagreement is the useful signal.
+function renderDoctorReviewPrompt(assessmentId, systemClass) {
+  const box = document.createElement('div');
+  box.id = 'doctor-review-box';
+  box.className = 'res-card';
+  box.style.marginBottom = '16px';
+  box.innerHTML = `
+    <h3>Your clinical assessment</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px">
+      The system classified this as <strong style="color:var(--text)">${systemClass}</strong>. Do you agree?
+    </div>
+    <div style="display:flex;gap:10px" id="dr-agree-row">
+      <button type="button" class="btn" style="background:var(--green);color:#04140a"
+        onclick="submitDoctorReview(${assessmentId}, true, null, null)">✓ Yes, I agree</button>
+      <button type="button" class="btn btn-secondary" onclick="showDoctorDisagreeForm(${assessmentId})">✗ No, my assessment differs</button>
+    </div>
+    <div id="dr-disagree-form" style="display:none;margin-top:14px">
+      <label style="font-size:11px;color:var(--text2);font-weight:500;margin-bottom:6px;display:block">Your classification</label>
+      <div class="toggle-group" id="dr-class-toggle" style="margin-bottom:12px">
+        <button type="button" class="toggle-btn" onclick="drSelectClass(this,'PROVEN')">Proven</button>
+        <button type="button" class="toggle-btn" onclick="drSelectClass(this,'PROBABLE')">Probable</button>
+        <button type="button" class="toggle-btn" onclick="drSelectClass(this,'POSSIBLE')">Possible</button>
+        <button type="button" class="toggle-btn" onclick="drSelectClass(this,'NONE')">No Sepsis</button>
+      </div>
+      <label style="font-size:11px;color:var(--text2);font-weight:500;margin-bottom:6px;display:block">Notes (optional)</label>
+      <textarea id="dr-notes" rows="2" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:8px 10px;color:var(--text);font-family:var(--sans);font-size:13px;margin-bottom:10px" placeholder="Why does your assessment differ?"></textarea>
+      <button type="button" class="btn" onclick="submitDrDisagree(${assessmentId})">Submit my assessment</button>
+    </div>
+  `;
+  document.getElementById('results-body').appendChild(box);
+}
+
+let drSelectedClass = null;
+function drSelectClass(btn, cls) {
+  drSelectedClass = cls;
+  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('sel-yes'));
+  btn.classList.add('sel-yes');
+}
+function showDoctorDisagreeForm(assessmentId) {
+  document.getElementById('dr-disagree-form').style.display = '';
+}
+function submitDrDisagree(assessmentId) {
+  if (!drSelectedClass) { alert('Please select your classification.'); return; }
+  const notes = document.getElementById('dr-notes').value;
+  submitDoctorReview(assessmentId, false, drSelectedClass, notes);
+}
+
+function submitDoctorReview(assessmentId, agreed, doctorClassification, notes) {
+  fetch(`/assessment/${STUDY_ID}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify({
+      assessment_id: assessmentId, agreed: agreed,
+      doctor_classification: doctorClassification, doctor_notes: notes
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) throw new Error(data.error);
+    const box = document.getElementById('doctor-review-box');
+    box.innerHTML = `<div style="color:var(--green);font-size:13px">✓ Your assessment recorded (${data.doctor_classification}). Thank you.</div>`;
+  })
+  .catch(err => {
+    alert('Could not save your assessment: ' + err.message);
+  });
+}
+
+function toggleScoringDetail() {
+  const el = document.getElementById('scoring-detail');
+  const btn = document.getElementById('scoring-detail-btn');
+  const showing = el.style.display !== 'none';
+  el.style.display = showing ? 'none' : '';
+  btn.textContent = showing ? '\u25be Show scoring detail' : '\u25b4 Hide scoring detail';
+}
+
+function showResults(A, B, C, D, E) {
+  currentStep = 4;
+  document.querySelectorAll('.step-page').forEach(p => p.classList.remove('active'));
+  const rp = document.getElementById('results-page');
+  rp.style.display = 'block';
+  rp.classList.add('active');
+  document.querySelectorAll('.step-item').forEach((item,i) => {
+    item.classList.toggle('active', i === 4);
+    item.classList.toggle('done', i < 4);
+  });
+  document.getElementById('btn-next').style.display = 'none';
+  document.getElementById('btn-calc').style.display = 'none';
+  document.getElementById('btn-back').style.display = '';
+  document.getElementById('btn-reset').style.display = '';
+  document.getElementById('step-indicator').textContent = 'Results';
+
+  const clsMap = {
+    PROVEN:   { cls:'proven',   label:'Proven Sepsis',   color:'var(--red)' },
+    PROBABLE: { cls:'probable', label:'Probable Sepsis', color:'var(--amber)' },
+    POSSIBLE: { cls:'possible', label:'Possible Sepsis', color:'var(--blue)' },
+    NONE:     { cls:'none',     label:'No Sepsis',       color:'var(--green)' },
+  };
+  const cm = clsMap[E.cls];
+
+  // Warnings
+  let warns = '';
+  if (yes('jaundice_24') && (E.regimen||[]).some(r=>r.toLowerCase().includes('ceftriaxone'))) {
+    warns += `<div class="warn-box"><strong>⚠ Ceftriaxone warning:</strong> Avoid ceftriaxone in jaundiced neonates — bilirubin displacement risk. Use Cefotaxime instead.</div>`;
+  }
+  if (C.ORGANISM === 'listeria') {
+    warns += `<div class="warn-box"><strong>⚠ Listeria:</strong> Intrinsically resistant to ALL cephalosporins. Ensure Ampicillin is included.</div>`;
+  }
+  if (D.IMAGING_FINDING === 'NEC_PERFORATED') {
+    warns += `<div class="warn-box"><strong>🚨 NEC Stage III:</strong> Surgical emergency — immediate surgical consultation required.</div>`;
+  }
+  if (D.IMAGING_FINDING === 'ENDOCARDITIS') {
+    warns += `<div class="warn-box"><strong>⚠ Endocarditis:</strong> Mandatory cardiac surgery consultation. Echocardiogram at 2 weeks and end of therapy.</div>`;
+  }
+  if (E.cls === 'PROVEN' && C.ORGANISM === 'candida') {
+    warns += `<div class="warn-box"><strong>⚠ Candida:</strong> Remove ALL CVCs immediately. Mandatory ophthalmology exam + renal US + echocardiogram.</div>`;
+  }
+
+  // Override list
+  let ovHtml = '';
+  if (B.overrides_B && B.overrides_B.length) {
+    ovHtml = B.overrides_B.map(o => `<div class="override-alert">🚨 <span>${o}</span></div>`).join('');
+  }
+  if (A.MAT_OVERRIDE_FLAG) {
+    ovHtml = `<div class="override-alert">🚨 <span>Maternal override: Chorioamnionitis confirmed</span></div>` + ovHtml;
+  }
+
+  // Regimen HTML
+  const regimenHtml = E.observationOnly
+    ? '<div style="color:var(--amber)">Observation pathway — no antibiotics started yet (see banner above)</div>'
+    : (E.regimen||[]).length
+      ? E.regimen.map((r,i) => `<div class="drug">${r}</div><div class="drug-detail">${E.regimenDetail[i]||''}</div>`).join('<hr style="border:none;border-top:1px solid var(--border);margin:6px 0">')
+      : '<div style="color:var(--green)">No antibiotics indicated</div>';
+
+  // Stop rule
+  const stopHtml = E.stopEligible
+    ? `<div style="color:var(--green);font-size:12px">✓ Eligible — two normal CRPs + negative culture + clinically well<br><span style="color:var(--text3)">Discontinue at 36–48h with senior clinician sign-off</span></div>`
+    : `<div style="color:var(--red);font-size:12px">✗ Not eligible — continue full course<br><span style="color:var(--text3)">${D.LOCALIZED_INFECTION_FLAG||C.CSF_ABNORMAL ? 'Active focal source: minimum source-specific duration applies' : 'Criteria not fully met'}</span></div>`;
+
+  // Reasons
+  const reasonsHtml = E.reasons.length
+    ? E.reasons.map(r=>`<li><span class="review-time">→</span>${r}</li>`).join('')
+    : '<li><span class="review-time">→</span>Based on cumulative score analysis</li>';
+
+  // A score flag
+  const matTier = A.MAT_RISK_SCORE <= 2 ? 'Low' : A.MAT_RISK_SCORE <= 5 ? 'Moderate' : A.MAT_RISK_SCORE <= 9 ? 'High' : 'Very High';
+
+  const observationBanner = E.observationOnly ? `
+  <div class="warn-box" style="margin-bottom:16px">
+    <strong>⏱ Observation pathway (no antibiotics yet):</strong> Only mild, isolated findings with no major risk factors.
+    Observe closely for ~12h rather than starting empiric antibiotics immediately: vital signs q2h, repeat CRP at 6h and 18–24h,
+    clinical review q4h. Escalate to empiric antibiotics immediately if any sign worsens, a new sign appears, or CRP rises.
+  </div>` : '';
+
+  const html = `
+  ${warns}
+  ${ovHtml}
+  ${observationBanner}
+
+  <div class="result-class ${cm.cls}">
+    <div class="class-label">Final Classification</div>
+    <div class="class-name">${cm.label}</div>
+    <div class="class-timing">${E.timing} &nbsp;·&nbsp; ${n('age_hrs')||0}h of life &nbsp;·&nbsp; GA ${n('ga')||'—'} weeks</div>
+  </div>
+
+  <button type="button" id="scoring-detail-btn" class="btn btn-secondary" style="font-size:11px;margin-bottom:16px" onclick="toggleScoringDetail()">▾ Show scoring detail</button>
+
+  <div id="scoring-detail" style="display:none;margin-bottom:16px">
+    <div class="score-row" style="margin-bottom:12px">
+      <div class="chip chip-amber">MAT score: ${A.MAT_RISK_SCORE} (${matTier})</div>
+      <div class="chip chip-red">Clinical score: ${B.CLINICAL_SIGN_COUNT}</div>
+      <div class="chip chip-blue">Lab score: ${C.LAB_SCORE}</div>
+      ${A.PRETERM_FLAG ? '<div class="chip chip-grey">PRETERM</div>' : ''}
+      ${C.LAB_SUPPORT_FLAG ? '<div class="chip chip-red">LAB SUPPORT ✓</div>' : ''}
+      ${C.PATHOGEN_CONFIRMED ? '<div class="chip chip-red">PATHOGEN CONFIRMED</div>' : ''}
+    </div>
+    <div class="flags-grid" style="margin-bottom:12px">
+      <div class="flag-item"><div class="flag-name">MAT_OVERRIDE_FLAG</div><div class="flag-val ${A.MAT_OVERRIDE_FLAG?'true':'false'}">${A.MAT_OVERRIDE_FLAG}</div></div>
+      <div class="flag-item"><div class="flag-name">CLINICAL_OVERRIDE</div><div class="flag-val ${B.CLINICAL_OVERRIDE?'true':'false'}">${B.CLINICAL_OVERRIDE}</div></div>
+      <div class="flag-item"><div class="flag-name">PATHOGEN_CONFIRMED</div><div class="flag-val ${C.PATHOGEN_CONFIRMED?'true':'false'}">${C.PATHOGEN_CONFIRMED}</div></div>
+      <div class="flag-item"><div class="flag-name">LAB_SUPPORT_FLAG</div><div class="flag-val ${C.LAB_SUPPORT_FLAG?'true':'false'}">${C.LAB_SUPPORT_FLAG}</div></div>
+      <div class="flag-item"><div class="flag-name">CSF_ABNORMAL</div><div class="flag-val ${C.CSF_ABNORMAL?'true':'false'}">${C.CSF_ABNORMAL}</div></div>
+      <div class="flag-item"><div class="flag-name">LOCALIZED_SOURCE</div><div class="flag-val score">${D.IMAGING_FINDING}</div></div>
+    </div>
+    <div class="res-card">
+      <h3>Classification basis (instant browser estimate)</h3>
+      <ul class="review-list">${reasonsHtml}</ul>
+      <p style="font-size:10px;color:var(--text3);margin-top:8px">Once saved below, see "Why This Decision" on this patient's history page for the server-confirmed, node-by-node breakdown.</p>
+    </div>
+  </div>
+
+  <div class="res-grid">
+    <div class="res-card">
+      <h3>Antibiotic regimen</h3>
+      ${regimenHtml}
+      ${E.antifungal ? '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0"><div class="drug">Fluconazole prophylaxis</div><div class="drug-detail">3 mg/kg twice weekly (preterm &lt;32wk)</div>' : ''}
+    </div>
+    <div class="res-card">
+      <h3>Duration</h3>
+      ${E.observationOnly ? '<div style="color:var(--amber);font-size:13px">Reassess at ~12h</div>' : E.days > 0 ? `<div class="dur">${E.days}<span class="dur-unit"> days IV</span></div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">${C.CSF_ABNORMAL?'Meningitis minimum applied (21d). ':''}${D.IMAGING_FINDING!=='NONE'?'Source-specific minimum applied. ':''}${A.PRETERM_FLAG?'Preterm extension applied.':''}</div>` : '<div style="color:var(--green);font-size:13px">No antibiotics indicated</div>'}
+    </div>
+    <div class="res-card">
+      <h3>Antibiotic stop rule</h3>
+      ${E.observationOnly ? '<div style="color:var(--text3);font-size:12px">Not applicable — no antibiotics started</div>' : stopHtml}
+    </div>
+  </div>
+
+  <div class="res-card" style="margin-bottom:16px">
+    <h3>Mandatory review schedule</h3>
+    <ul class="review-list">
+      <li><span class="review-time">6 h</span>First CRP result + clinical reassessment</li>
+      <li><span class="review-time">18–24 h</span>Repeat CRP + blood culture preliminary + trajectory</li>
+      <li><span class="review-time">36–48 h</span>Blood culture final read + stop rule assessment</li>
+      <li><span class="review-time">72 h</span>Full classification reassessment — escalate or de-escalate</li>
+      <li><span class="review-time">Daily</span>CBC trend · CRP · feeding · thermoregulation</li>
+    </ul>
+  </div>
+
+  <div class="res-card" style="margin-bottom:16px">
+    <h3>Supportive care</h3>
+    <ul class="review-list">
+      <li><span class="review-time">Temp</span>Target axillary 36.5–37.4°C in incubator/warmer</li>
+      <li><span class="review-time">SpO₂</span>${A.PRETERM_FLAG && (n('ga')||40) < 28 ? 'Target 91–95% (preterm <28wk)' : 'Target 94–98% (room air preferred)'}</li>
+      <li><span class="review-time">Glucose</span>Maintain 45–180 mg/dL — IV dextrose GIR 4–6 mg/kg/min</li>
+      <li><span class="review-time">Fluids</span>${A.PRETERM_FLAG ? '70–80 mL/kg/day — adjust for insensible losses' : '60–80 mL/kg/day D10W'}</li>
+      <li><span class="review-time">Shock</span>NS 10–20 mL/kg bolus (up to 3×) → Dopamine 5–20 mcg/kg/min</li>
+      <li><span class="review-time">Feeding</span>Encourage early exclusive breastfeeding as soon as clinically able — associated with reduced LOS/NEC risk</li>
+    </ul>
+  </div>
+
+  <div style="background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:10px;color:var(--text3);line-height:1.7">
+    <strong style="color:var(--text2)">Research / Educational use only.</strong> This tool implements the neonatal sepsis CDS pipeline (Flowcharts A–E) for research validation purposes. It is not approved for clinical use and must not replace physician judgement. All outputs require senior clinician review before any clinical action.
+  </div>
+  `;
+
+  document.getElementById('results-body').innerHTML = html;
+  document.getElementById('content').scrollTop = 0;
+}
+
+function stepBack() {
+  if (currentStep === 4) {
+    // Go back to imaging
+    currentStep = 3;
+    document.getElementById('results-page').style.display = 'none';
+    document.getElementById('results-page').classList.remove('active');
+    goStep(3);
+  } else if (currentStep > 0) {
+    goStep(currentStep - 1);
+  }
+}
+
+// ── PRE-FILL FROM MOST RECENT ASSESSMENT ────────────────
+// Reuses each button's own click handler (rather than re-implementing tog()
+// logic separately) so any paired showHide(...) side effects - revealing
+// sub-sections, etc. - fire exactly as they would on a real click.
+function applyPrefill(prefill) {
+  if (!prefill) return;
+
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    const onclickAttr = btn.getAttribute('onclick') || '';
+    const m = onclickAttr.match(/tog\(this,\s*'([^']+)'\s*,\s*'([^']+)'\)/);
+    if (m) {
+      const key = m[1], val = m[2];
+      if (Object.prototype.hasOwnProperty.call(prefill, key) && prefill[key] === val) {
+        btn.onclick();
+      }
+    }
+  });
+
+  NUMERIC_FIELD_IDS.forEach(id => {
+    if (Object.prototype.hasOwnProperty.call(prefill, id)) {
+      const el = document.getElementById(id);
+      if (el) el.value = prefill[id];
+    }
+  });
+
+  const org = document.getElementById('organism');
+  if (org && prefill.organism) org.value = prefill.organism;
+}
+
+applyPrefill(PREFILL);
+</script>
+</body>
+</html>

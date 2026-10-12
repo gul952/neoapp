@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>Patient {{ study_id }}</h1>
+<p class="sub">Previous assessments for this patient, or start a new one.</p>
+
+<p style="margin-bottom:18px">
+  {% if entries %}
+  <a class="btn" href="{{ url_for('assessment.form', study_id=study_id) }}">+ New Assessment (pre-filled from most recent)</a>
+  {% else %}
+  <a class="btn" href="{{ url_for('assessment.form', study_id=study_id) }}">+ Start First Assessment</a>
+  {% endif %}
+</p>
+
+<div class="card">
+  {% if entries %}
+  <table>
+    <tr><th>Date / Time</th><th>System Classification</th><th>Doctor's Verdict</th><th>Entered By</th><th></th></tr>
+    {% for e in entries %}
+    <tr>
+      <td>{{ e.assessment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td>{{ e.output.classification if e.output else '—' }}</td>
+      <td>
+        {% if e.output and e.output.doctor_reviewed_at %}
+          {% if e.output.doctor_agreed %}
+            <span style="color:var(--green)">Agreed</span>
+          {% else %}
+            <span style="color:var(--amber)">Disagreed &rarr; {{ e.output.doctor_classification }}</span>
+          {% endif %}
+        {% else %}
+          <span style="color:var(--text3)">Pending review</span>
+        {% endif %}
+      </td>
+      <td>{{ e.assessment.entered_by.full_name }}</td>
+      <td><a href="{{ url_for('assessment.view', study_id=study_id, assessment_id=e.assessment.id) }}" style="color:var(--accent);font-size:12px;text-decoration:none">View &rarr;</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:var(--text2);font-size:13px">No assessments yet for this patient &mdash; use the button above to start the first one.</p>
+  {% endif %}
+</div>
+{% endblock %}

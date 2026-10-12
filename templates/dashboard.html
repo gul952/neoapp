@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>Welcome, {{ current_user.full_name.split(' ')[0] }}</h1>
+<p class="sub">Choose what you'd like to do.</p>
+
+<div class="tile-grid">
+  <a class="tile" href="{{ url_for('consent.new') }}">
+    <div class="t-label">+ New Patient Encounter</div>
+    <div class="t-sub">Start consent, then collect clinical data</div>
+  </a>
+
+  <a class="tile" href="{{ url_for('assessment.lookup') }}">
+    <div class="t-label">Continue an Encounter</div>
+    <div class="t-sub">Resume data entry with a study ID (e.g. add lab results later)</div>
+  </a>
+
+  <a class="tile" href="{{ url_for('admin.suggestions') }}">
+    <div class="t-label">Rule Change Suggestions</div>
+    <div class="t-sub">{{ 'Accept/decline proposed rule changes' if current_user.is_admin() else 'Propose a change, or see what others have suggested' }}</div>
+  </a>
+
+  {% if current_user.is_admin() %}
+  <a class="tile" href="{{ url_for('admin.patients') }}">
+    <div class="t-label">All Patients</div>
+    <div class="t-sub">Cross-patient status: latest classification &amp; doctor verdict</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.list_users') }}">
+    <div class="t-label">Manage Accounts</div>
+    <div class="t-sub">View or add doctor/admin accounts</div>
+  </a>
+  <a class="tile" href="{{ url_for('admin.disagreements') }}">
+    <div class="t-label">Doctor Disagreements</div>
+    <div class="t-sub">Cases where the doctor's judgment differed from the system</div>
+  </a>
+  {% endif %}
+</div>
+{% endblock %}

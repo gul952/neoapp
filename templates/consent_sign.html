@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>New Patient Encounter &mdash; Step 2 of 2</h1>
+  <p class="sub">Signing for: <strong>{{ guardian_name }}</strong></p>
+
+  <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Please sign in the box below (finger or mouse both work).</p>
+
+  <canvas id="pad" width="600" height="200"
+    style="width:100%;max-width:600px;height:200px;background:#fff;border-radius:8px;touch-action:none;cursor:crosshair;display:block"></canvas>
+
+  <div style="margin-top:12px;display:flex;gap:10px">
+    <button type="button" class="btn btn-secondary" onclick="clearPad()">Clear</button>
+    <button type="button" onclick="submitSignature()">Confirm &amp; Submit</button>
+  </div>
+
+  <form id="signForm" method="post" style="display:none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="signature_data" id="signature_data">
+  </form>
+</div>
+
+<script>
+const canvas = document.getElementById('pad');
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = '#fff';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.strokeStyle = '#111';
+ctx.lineWidth = 2.5;
+ctx.lineCap = 'round';
+
+let drawing = false;
+let hasSignature = false;
+
+function pos(e) {
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / r.width;
+  const scaleY = canvas.height / r.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (clientX - r.left) * scaleX, y: (clientY - r.top) * scaleY };
+}
+
+function start(e) {
+  e.preventDefault();
+  drawing = true;
+  hasSignature = true;
+  const p = pos(e);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+}
+function move(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const p = pos(e);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+}
+function end() { drawing = false; }
+
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+canvas.addEventListener('mouseup', end);
+canvas.addEventListener('mouseleave', end);
+canvas.addEventListener('touchstart', start, { passive: false });
+canvas.addEventListener('touchmove', move, { passive: false });
+canvas.addEventListener('touchend', end);
+
+function clearPad() {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  hasSignature = false;
+}
+
+function submitSignature() {
+  if (!hasSignature) {
+    alert('Please sign before submitting.');
+    return;
+  }
+  document.getElementById('signature_data').value = canvas.toDataURL('image/png');
+  document.getElementById('signForm').submit();
+}
+</script>
+{% endblock %}

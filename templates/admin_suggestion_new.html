@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Draft a Rule Change Suggestion</h1>
+  <p class="sub">Based on a pattern noticed in the Doctor Disagreements report.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Flowchart</label>
+    <select name="flowchart">
+      <option value="">&mdash; None specific &mdash;</option>
+      <option value="A">A &mdash; Maternal Risk</option>
+      <option value="B">B &mdash; Clinical Signs</option>
+      <option value="C">C &mdash; Labs</option>
+      <option value="D">D &mdash; Imaging</option>
+      <option value="E">E &mdash; Classification</option>
+    </select>
+
+    <label>Node ID (optional)</label>
+    <input type="text" name="node_id" placeholder="e.g. A12b">
+
+    <label>Proposed change</label>
+    <input type="text" name="description" placeholder="e.g. Raise ROM 18-24h threshold from +1 to +2" required>
+
+    <label>Rationale (optional)</label>
+    <input type="text" name="rationale" placeholder="e.g. 4 of 5 disagreements this month involved ROM 18-24h cases">
+
+    <button type="submit">Save as Pending</button>
+    &nbsp; <a class="btn btn-secondary" href="{{ url_for('admin.suggestions') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div style="display:flex;gap:8px;margin-bottom:16px">
+  <button type="button" class="btn btn-secondary lang-btn" id="btn-en" onclick="setLang('en')">English</button>
+  <button type="button" class="btn btn-secondary lang-btn" id="btn-ur" onclick="setLang('ur')">اردو</button>
+</div>
+
+<div class="card" id="consent-card">
+  <h1 data-t="title">New Patient Encounter &mdash; Step 1 of 2</h1>
+  <p class="sub" data-t="sub">Read this to the guardian (or let them read it) before continuing.</p>
+
+  <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;color:var(--text2);line-height:1.9">
+    <!-- TODO (important): replace this block with your institution's
+         IRB-approved consent wording before using this with real patients. -->
+    <p style="color:var(--text);font-weight:600;margin-bottom:8px" data-t="info_heading">About this study</p>
+    <p data-t="info_p1">We are collecting information about your baby's health to help improve a computer tool that helps doctors assess the risk of infection in newborns.</p>
+    <p style="margin-top:8px" data-t="info_p2">Taking part is completely voluntary. Declining will not affect your baby's care in any way, and you can withdraw at any time.</p>
+    <p style="margin-top:8px" data-t="info_p3">Your name and contact details are stored separately from your baby's health information, and only the study team can access them.</p>
+    <p style="margin-top:8px;font-style:italic" data-t="info_p4">If you have questions, you can ask the doctor now or contact: [study coordinator contact - to be filled in].</p>
+  </div>
+
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label data-t="label_name">Guardian's full name</label>
+    <input type="text" name="guardian_name" required>
+
+    <label data-t="label_contact">Guardian's contact number (optional)</label>
+    <input type="text" name="guardian_contact">
+
+    <label data-t="label_relationship">Relationship to infant</label>
+    <select name="relationship" required>
+      <option value="" data-t="opt_select">-- Select --</option>
+      <option value="mother" data-t="opt_mother">Mother</option>
+      <option value="father" data-t="opt_father">Father</option>
+      <option value="legal_guardian" data-t="opt_guardian">Legal guardian</option>
+      <option value="other" data-t="opt_other">Other</option>
+    </select>
+
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);margin-bottom:18px">
+      <input type="checkbox" name="agreed" value="yes" style="width:auto;margin-top:3px" required>
+      <span data-t="checkbox_text">I have explained this to the guardian in a language they understand, and they agree to take part.</span>
+    </label>
+
+    <button type="submit" data-t="btn_continue">Continue to signature &rarr;</button>
+  </form>
+</div>
+
+<style>
+  .lang-btn.active-lang { background: var(--accent); color: #04101f; border-color: var(--accent); }
+  #consent-card[dir="rtl"] { font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', sans-serif; font-size: 15px; }
+  #consent-card[dir="rtl"] label { text-align: right; }
+  #consent-card[dir="rtl"] h1, #consent-card[dir="rtl"] .sub { text-align: right; }
+</style>
+
+<script>
+const translations = {
+  en: {
+    title: "New Patient Encounter — Step 1 of 2",
+    sub: "Read this to the guardian (or let them read it) before continuing.",
+    info_heading: "About this study",
+    info_p1: "We are collecting information about your baby's health to help improve a computer tool that helps doctors assess the risk of infection in newborns.",
+    info_p2: "Taking part is completely voluntary. Declining will not affect your baby's care in any way, and you can withdraw at any time.",
+    info_p3: "Your name and contact details are stored separately from your baby's health information, and only the study team can access them.",
+    info_p4: "If you have questions, you can ask the doctor now or contact: [study coordinator contact - to be filled in].",
+    label_name: "Guardian's full name",
+    label_contact: "Guardian's contact number (optional)",
+    label_relationship: "Relationship to infant",
+    opt_select: "-- Select --",
+    opt_mother: "Mother",
+    opt_father: "Father",
+    opt_guardian: "Legal guardian",
+    opt_other: "Other",
+    checkbox_text: "I have explained this to the guardian in a language they understand, and they agree to take part.",
+    btn_continue: "Continue to signature →"
+  },
+  ur: {
+    title: "نیا مریض اندراج — مرحلہ 1 از 2",
+    sub: "آگے بڑھنے سے پہلے یہ سرپرست کو پڑھ کر سنائیں (یا خود پڑھنے دیں)۔",
+    info_heading: "اس مطالعے کے بارے میں",
+    info_p1: "ہم آپ کے بچے کی صحت سے متعلق معلومات جمع کر رہے ہیں تاکہ ایک ایسے کمپیوٹر پروگرام کو بہتر بنایا جا سکے جو ڈاکٹروں کو نوزائیدہ بچوں میں انفیکشن کے خطرے کا اندازہ لگانے میں مدد دیتا ہے۔",
+    info_p2: "اس میں شرکت مکمل طور پر رضاکارانہ ہے۔ انکار کرنے سے آپ کے بچے کی دیکھ بھال پر کوئی اثر نہیں پڑے گا، اور آپ کسی بھی وقت دستبردار ہو سکتے ہیں۔",
+    info_p3: "آپ کا نام اور رابطہ نمبر آپ کے بچے کی طبی معلومات سے الگ محفوظ رکھے جاتے ہیں، اور صرف تحقیقی ٹیم ہی ان تک رسائی رکھتی ہے۔",
+    info_p4: "اگر آپ کے کوئی سوالات ہیں تو آپ ابھی ڈاکٹر سے پوچھ سکتے ہیں یا رابطہ کریں: [اسٹڈی کوآرڈینیٹر کا رابطہ نمبر - بعد میں شامل کیا جائے گا]۔",
+    label_name: "سرپرست کا پورا نام",
+    label_contact: "سرپرست کا رابطہ نمبر (اختیاری)",
+    label_relationship: "بچے سے رشتہ",
+    opt_select: "-- منتخب کریں --",
+    opt_mother: "ماں",
+    opt_father: "باپ",
+    opt_guardian: "قانونی سرپرست",
+    opt_other: "دیگر",
+    checkbox_text: "میں نے یہ سرپرست کو ایسی زبان میں سمجھا دیا ہے جو وہ سمجھتے ہیں، اور وہ شرکت پر رضامند ہیں۔",
+    btn_continue: "دستخط کی طرف جائیں"
+  }
+};
+
+function setLang(lang) {
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.getAttribute('data-t');
+    if (translations[lang][key] !== undefined) el.textContent = translations[lang][key];
+  });
+  const card = document.getElementById('consent-card');
+  card.setAttribute('dir', lang === 'ur' ? 'rtl' : 'ltr');
+  document.getElementById('btn-en').classList.toggle('active-lang', lang === 'en');
+  document.getElementById('btn-ur').classList.toggle('active-lang', lang === 'ur');
+}
+
+// Default to English on load
+setLang('en');
+</script>
+{% endblock %}

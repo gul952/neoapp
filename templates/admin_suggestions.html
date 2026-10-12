@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>Rule Change Suggestions</h1>
+<p class="sub">Proposed edits to the A&ndash;E scoring thresholds. Any doctor can draft one after noticing a pattern; only an admin/PI can accept or decline.</p>
+
+<div class="warn-box" style="margin-bottom:18px">
+  <strong>Accepting a suggestion here only records the decision.</strong> It does not automatically change
+  the live scoring logic &mdash; a developer still needs to apply the edit in <code>scoring.py</code> deliberately.
+</div>
+
+<p style="margin-bottom:18px"><a class="btn" href="{{ url_for('admin.new_suggestion') }}">+ Draft New Suggestion</a></p>
+
+<div class="card" style="margin-bottom:18px">
+  <h3 style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:12px">Pending ({{ pending|length }})</h3>
+  {% if pending %}
+    {% for s in pending %}
+    <div style="border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:12px;background:var(--surface2)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px">
+        <div>
+          <span class="badge doctor">{{ s.flowchart or '\u2014' }}{{ ' \u00b7 ' + s.node_id if s.node_id else '' }}</span>
+          {% if not s.proposed_by %}<span class="badge admin" style="margin-left:6px">System-suggested</span>{% endif %}
+          <div style="font-size:14px;margin-top:8px">{{ s.description }}</div>
+          {% if s.rationale %}<div style="font-size:12px;color:var(--text2);margin-top:6px">{{ s.rationale }}</div>{% endif %}
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">
+            Proposed {{ s.proposed_at.strftime('%Y-%m-%d %H:%M') }}
+            {% if s.proposed_by %} by {{ s.proposed_by.full_name }}{% endif %}
+          </div>
+        </div>
+        {% if current_user.is_admin() %}
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <form method="post" action="{{ url_for('admin.decide_suggestion', suggestion_id=s.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="decision" value="accept">
+            <button type="submit" class="btn" style="background:var(--green);color:#04140a">Accept</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.decide_suggestion', suggestion_id=s.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="decision" value="decline">
+            <button type="submit" class="btn btn-secondary">Decline</button>
+          </form>
+        </div>
+        {% else %}
+        <div style="flex-shrink:0;font-size:12px;color:var(--text3)">Awaiting PI review</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="color:var(--text2);font-size:13px">No pending suggestions.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3 style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:12px">Previously Decided</h3>
+  {% if decided %}
+  <table>
+    <tr><th>Change</th><th>Proposed By</th><th>Status</th><th>Reviewed By</th><th>Date</th><th>Applied to scoring.py</th></tr>
+    {% for s in decided %}
+    <tr>
+      <td style="font-size:12px">{{ s.description }}</td>
+      <td style="font-size:12px">{{ s.proposed_by.full_name if s.proposed_by else 'System' }}</td>
+      <td><span style="color:{{ 'var(--green)' if s.status == 'accepted' else 'var(--red)' }}">{{ s.status|capitalize }}</span></td>
+      <td>{{ s.reviewed_by.full_name if s.reviewed_by else '\u2014' }}</td>
+      <td>{{ s.reviewed_at.strftime('%Y-%m-%d') if s.reviewed_at else '\u2014' }}</td>
+      <td>
+        {% if s.status == 'accepted' %}
+          {% if s.applied_to_scoring %}
+            <span style="color:var(--green);font-size:12px">&check; Applied {{ s.applied_at.strftime('%Y-%m-%d') if s.applied_at else '' }} by {{ s.applied_by.full_name if s.applied_by else '\u2014' }}</span>
+          {% elif current_user.is_admin() %}
+            <form method="post" action="{{ url_for('admin.mark_applied', suggestion_id=s.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-secondary" style="font-size:11px;padding:5px 10px">Mark as Applied</button>
+            </form>
+          {% else %}
+            <span style="color:var(--text3);font-size:12px">Not yet applied</span>
+          {% endif %}
+        {% else %}
+          <span style="color:var(--text3);font-size:12px">&mdash;</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:var(--text2);font-size:13px">No suggestions decided yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

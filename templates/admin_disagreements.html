@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>Doctor Disagreements</h1>
+<p class="sub">Cases where the doctor's own clinical judgment differed from the system's classification.</p>
+
+<div class="card" style="margin-bottom:18px">
+  <div style="display:flex;gap:32px">
+    <div>
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Reviewed cases</div>
+      <div style="font-size:24px;font-weight:600">{{ total_reviewed }}</div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Disagreements</div>
+      <div style="font-size:24px;font-weight:600;color:var(--amber)">{{ total_disagreed }}</div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Agreement rate</div>
+      <div style="font-size:24px;font-weight:600;color:var(--green)">{{ agreement_rate if agreement_rate is not none else '—' }}{{ '%' if agreement_rate is not none else '' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <tr><th>Study ID</th><th>Reviewed</th><th>System Said</th><th>Doctor Said</th><th>Actual Outcome</th><th>Notes</th><th></th></tr>
+    {% for row in rows %}
+    <tr>
+      <td class="mono">{{ row.assessment.study_id }}</td>
+      <td>{{ row.output.doctor_reviewed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td><span class="badge admin">{{ row.output.classification }}</span></td>
+      <td><span class="badge doctor">{{ row.output.doctor_classification }}</span></td>
+      <td>
+        {% if row.output.confirmed_outcome %}
+          <span style="font-size:12px;color:{{ 'var(--red)' if row.output.confirmed_outcome == 'sepsis_confirmed' else 'var(--green)' }}">{{ row.output.confirmed_outcome.replace('_',' ')|title }}</span>
+        {% else %}
+          <span style="font-size:12px;color:var(--text3)">Not yet known</span>
+        {% endif %}
+      </td>
+      <td style="font-size:12px;color:var(--text2);max-width:280px">{{ row.output.doctor_notes or '—' }}</td>
+      <td><a href="{{ url_for('assessment.view', study_id=row.assessment.study_id, assessment_id=row.assessment.id) }}" style="color:var(--accent);font-size:12px;text-decoration:none">View &rarr;</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:var(--text2);font-size:13px">No disagreements recorded yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

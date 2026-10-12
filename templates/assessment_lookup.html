@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Continue an encounter</h1>
+  <p class="sub">Enter the study ID shown on the consent confirmation screen.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Study ID</label>
+    <input type="text" name="study_id" placeholder="e.g. NS-A1B2C3D4" autofocus required style="text-transform:uppercase">
+    <button type="submit">Continue &rarr;</button>
+  </form>
+</div>
+{% endblock %}

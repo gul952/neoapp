@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>All Patients</h1>
+<p class="sub">Latest status across every consented patient. Names/contacts are kept separate from this view.</p>
+
+<p style="margin-bottom:18px">
+  <a class="btn btn-secondary" href="{{ url_for('admin.export_csv') }}">&darr; Export All Clinical Data (CSV)</a>
+</p>
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <tr>
+      <th>Study ID</th><th>Consented</th><th># Visits</th>
+      <th>Latest Classification</th><th>Doctor Verdict</th><th>Last Activity</th><th></th>
+    </tr>
+    {% for row in rows %}
+    <tr>
+      <td class="mono">{{ row.study_id }}</td>
+      <td>{{ row.consented_at.strftime('%Y-%m-%d') }}</td>
+      <td>{{ row.assessment_count }}</td>
+      <td>
+        {% if row.output %}
+          <span class="badge {{ 'admin' if row.output.classification in ['PROVEN','PROBABLE'] else 'doctor' }}">{{ row.output.classification }}</span>
+        {% else %}
+          <span style="color:var(--text3)">No data yet</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if row.output and row.output.doctor_reviewed_at %}
+          {% if row.output.doctor_agreed %}
+            <span style="color:var(--green)">Agreed</span>
+          {% else %}
+            <span style="color:var(--amber)">Disagreed &rarr; {{ row.output.doctor_classification }}</span>
+          {% endif %}
+        {% elif row.latest %}
+          <span style="color:var(--text3)">Pending review</span>
+        {% else %}
+          <span style="color:var(--text3)">&mdash;</span>
+        {% endif %}
+      </td>
+      <td>{{ row.latest.created_at.strftime('%Y-%m-%d %H:%M') if row.latest else '—' }}</td>
+      <td><a href="{{ url_for('assessment.history', study_id=row.study_id) }}" style="color:var(--accent);font-size:12px;text-decoration:none">Open &rarr;</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:var(--text2);font-size:13px">No patients consented yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+<h1>Assessment #{{ assessment.id }} &mdash; {{ study_id }}</h1>
+<p class="sub">{{ assessment.created_at.strftime('%Y-%m-%d %H:%M') }} &middot; entered by {{ assessment.entered_by.full_name }}</p>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">
+  <div class="card">
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">System Classification</div>
+    <div style="font-size:22px;font-weight:600;color:var(--accent)">{{ output.classification if output else '—' }}</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:6px">MAT {{ output.mat_risk_score if output else '—' }} &middot; CLIN {{ output.clinical_sign_count if output else '—' }} &middot; LAB {{ output.lab_score if output else '—' }}</div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Regimen &amp; Duration</div>
+    {% if output and output.observation_only %}
+      <div style="color:var(--amber);font-size:13px">Observation pathway — no antibiotics started, close monitoring instead</div>
+    {% elif output and output.regimen_json and output.regimen_json.regimen %}
+      {% for drug in output.regimen_json.regimen %}<div style="font-size:13px">{{ drug }}</div>{% endfor %}
+    {% else %}
+      <div style="color:var(--green);font-size:13px">None indicated</div>
+    {% endif %}
+    <div style="font-size:11px;color:var(--text2);margin-top:6px">{{ output.duration_days if output else 0 }} days</div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Doctor's Assessment</div>
+    {% if output and output.doctor_reviewed_at %}
+      {% if output.doctor_agreed %}
+        <div style="color:var(--green);font-size:13px">Agreed with system</div>
+      {% else %}
+        <div style="color:var(--amber);font-size:13px">Disagreed &rarr; {{ output.doctor_classification }}</div>
+        {% if output.doctor_notes %}<div style="font-size:11px;color:var(--text2);margin-top:6px">&ldquo;{{ output.doctor_notes }}&rdquo;</div>{% endif %}
+      {% endif %}
+    {% else %}
+      <div style="color:var(--text3);font-size:13px">Not yet reviewed</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Why This Decision (nodes that fired)</div>
+  {% if output and output.triggered_nodes %}
+    <table>
+      <tr><th>Flowchart</th><th>Node</th><th>Finding</th><th>Contribution</th></tr>
+      {% for node in output.triggered_nodes %}
+      <tr>
+        <td><span class="badge {{ 'admin' if node.override else 'doctor' }}">{{ node.flowchart }}</span></td>
+        <td class="mono">{{ node.node_id }}</td>
+        <td style="font-size:12px">{{ node.label }}</td>
+        <td style="font-size:12px">
+          {% if node.override %}
+            <span style="color:var(--red)">OVERRIDE</span>
+          {% else %}
+            +{{ node.points }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p style="font-size:13px;color:var(--text2)">No individual nodes fired for this case (all values within normal ranges, or no data entered).</p>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:18px">
+  <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Confirmed Clinical Outcome</div>
+  {% if output and output.confirmed_outcome %}
+    <div style="margin-bottom:8px">
+      <span class="badge {{ 'admin' if output.confirmed_outcome == 'sepsis_confirmed' else 'doctor' }}">{{ output.confirmed_outcome.replace('_', ' ')|title }}</span>
+    </div>
+    <div style="font-size:11px;color:var(--text2)">
+      Recorded by {{ output.outcome_entered_by.full_name if output.outcome_entered_by else 'unknown' }}
+      on {{ output.outcome_entered_at.strftime('%Y-%m-%d') if output.outcome_entered_at else '' }}
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:6px">Update below if new information becomes available.</div>
+  {% else %}
+    <p style="font-size:13px;color:var(--text2);margin-bottom:4px">Not yet known.</p>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Record the real outcome once cultures/clinical course are finalized - this is what eventually lets you compare the system's call, the doctor's call, and what actually happened.</p>
+  {% endif %}
+  {% if output %}
+  <form method="post" action="{{ url_for('assessment.set_outcome', study_id=study_id, assessment_id=assessment.id) }}" style="margin-top:12px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="confirmed_outcome" style="max-width:280px;margin-bottom:10px">
+      <option value="">&mdash; Select &mdash;</option>
+      <option value="sepsis_confirmed" {{ 'selected' if output.confirmed_outcome == 'sepsis_confirmed' }}>Sepsis Confirmed</option>
+      <option value="sepsis_ruled_out" {{ 'selected' if output.confirmed_outcome == 'sepsis_ruled_out' }}>Sepsis Ruled Out</option>
+      <option value="indeterminate" {{ 'selected' if output.confirmed_outcome == 'indeterminate' }}>Indeterminate</option>
+    </select>
+    <button type="submit">Save Outcome</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Raw entered values</div>
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    {% for k, v in raw_inputs.items()|sort %}
+    <tr><td class="mono">{{ k }}</td><td>{{ v }}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<p style="margin-top:18px">
+  <a class="btn btn-secondary" href="{{ url_for('assessment.history', study_id=study_id) }}">&larr; Back to history</a>
+</p>
+{% endblock %}
